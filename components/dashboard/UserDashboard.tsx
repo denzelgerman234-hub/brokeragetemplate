@@ -172,6 +172,7 @@ export function UserDashboard({ user, brand }: UserDashboardProps) {
         onOpenDeposit={() => setIsDepositOpen(true)}
         onOpenWithdraw={() => setIsWithdrawOpen(true)}
         onOpenNewOrder={() => setIsNewOrderOpen(true)}
+        kycStatus={user.kycStatus}
       />
 
       {/* 2. Top Portfolio Metrics Grid */}

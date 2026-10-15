@@ -8,6 +8,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   BellRing,
+  Check,
   Copy,
   Landmark,
   Lock,
@@ -94,6 +95,33 @@ const testimonials = [
     role: "Day Trader",
   },
 ];
+
+const membershipPlans = [
+  {
+    badge: "STANDARD",
+    name: "Standard",
+    price: "$0",
+    description: "A simple, capable place to begin your trading journey.",
+    benefits: ["Live trading wallet", "Market tools and insights", "Standard support"],
+    featured: false,
+  },
+  {
+    badge: "MOST POPULAR",
+    name: "Pro Trader",
+    price: "$1,500",
+    description: "More room to grow, with sharper benefits for active traders.",
+    benefits: ["30% trading-fee discount", "3.5% staking APY bonus", "Priority support"],
+    featured: true,
+  },
+  {
+    badge: "VIP",
+    name: "VIP Institutional",
+    price: "$5,000",
+    description: "Dedicated support and the strongest benefits for serious investors.",
+    benefits: ["60% trading-fee discount", "8% staking APY bonus", "Personal account manager"],
+    featured: false,
+  },
+] as const;
 
 export function HomeSections({ brand, quotes }: HomeSectionsProps) {
   const { t } = useTranslation();
@@ -456,6 +484,15 @@ export function HomeSections({ brand, quotes }: HomeSectionsProps) {
         </div>
       </Section>
 
+      {/* ── Membership plans ─────────────────────────────────────────────── */}
+      <Section
+        eyebrow="Membership"
+        title="Choose the plan that matches your ambition"
+        body="Start free, then unlock more rewards, lower fees, and dedicated support as your trading grows."
+      >
+        <MembershipWheel />
+      </Section>
+
       {/* ── Testimonials ─────────────────────────────────────────────────── */}
       <Section
         eyebrow={t.testimonialsEyebrow ?? "Testimonials"}
@@ -499,6 +536,113 @@ export function HomeSections({ brand, quotes }: HomeSectionsProps) {
         </div>
       </section>
     </main>
+  );
+}
+
+function MembershipWheel() {
+  const [active, setActive] = useState(1);
+  const reducedMotion = useReducedMotion();
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [stageWidth, setStageWidth] = useState(0);
+  const total = membershipPlans.length;
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const update = () => setStageWidth(stage.clientWidth);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, []);
+
+  const go = useCallback((direction: 1 | -1) => {
+    setActive((current) => (current + direction + total) % total);
+  }, [total]);
+
+  const handleKey = useCallback((event: React.KeyboardEvent) => {
+    if (event.key === "ArrowLeft") { event.preventDefault(); go(-1); }
+    if (event.key === "ArrowRight") { event.preventDefault(); go(1); }
+  }, [go]);
+
+  return (
+    <div
+      className="membership-wheel"
+      role="region"
+      aria-roledescription="carousel"
+      aria-label="Membership plans"
+      tabIndex={0}
+      onKeyDown={handleKey}
+    >
+      <div className="membership-wheel-dots" role="tablist" aria-label="Select membership plan">
+        {membershipPlans.map((plan, index) => (
+          <button
+            key={plan.name}
+            className="membership-wheel-dot"
+            role="tab"
+            aria-current={index === active ? "true" : undefined}
+            aria-label={`Show ${plan.name} plan`}
+            onClick={() => setActive(index)}
+          />
+        ))}
+      </div>
+
+      <div ref={stageRef} className="membership-wheel-stage">
+        <div className="membership-wheel-track">
+          {membershipPlans.map((plan, index) => {
+            const offset = ((index - active + total + 1) % total) - 1;
+            const isActive = offset === 0;
+            const mobile = stageWidth > 0 && stageWidth < 768;
+            const stepX = mobile ? Math.min(stageWidth * 0.82, 300) : 340;
+            const cardProps = {
+              x: offset * stepX,
+              y: Math.abs(offset) * (mobile ? 18 : 28),
+              rotate: offset * 5,
+              scale: isActive ? 1 : mobile ? 0.88 : 0.93,
+              opacity: isActive ? 1 : mobile ? 0.42 : 0.72,
+            };
+
+            return (
+              <motion.article
+                key={plan.name}
+                className="membership-wheel-card"
+                data-active={isActive ? "true" : undefined}
+                data-featured={plan.featured ? "true" : undefined}
+                animate={reducedMotion ? { opacity: cardProps.opacity } : cardProps}
+                transition={{ type: "spring", stiffness: 190, damping: 25 }}
+                style={{ zIndex: isActive ? 10 : 5 }}
+                onClick={() => !isActive && setActive(index)}
+              >
+                <div className="membership-wheel-card__shine" aria-hidden="true" />
+                <div className="membership-wheel-card__topline">
+                  <span className="membership-wheel-card__badge">{plan.badge}</span>
+                  {plan.featured ? <span className="membership-wheel-card__signal">Best value</span> : null}
+                </div>
+                <h3 className="membership-wheel-card__name">{plan.name}</h3>
+                <p className="membership-wheel-card__description">{plan.description}</p>
+                <p className="membership-wheel-card__price"><span>{plan.price}</span><small> / plan</small></p>
+                <ul className="membership-wheel-card__benefits">
+                  {plan.benefits.map((benefit) => <li key={benefit}><Check size={15} aria-hidden="true" />{benefit}</li>)}
+                </ul>
+                <Link
+                  href="/auth/register"
+                  tabIndex={isActive ? 0 : -1}
+                  className="membership-wheel-card__cta"
+                >
+                  {plan.price === "$0" ? "Get started" : "Explore plan"}
+                  <ArrowUpRight size={16} aria-hidden="true" />
+                </Link>
+              </motion.article>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="membership-wheel-controls">
+        <button className="membership-wheel-btn membership-wheel-btn--prev" aria-label="Previous membership plan" onClick={() => go(-1)}><ArrowLeft size={18} /></button>
+        <button className="membership-wheel-btn membership-wheel-btn--next" aria-label="Next membership plan" onClick={() => go(1)}><ArrowRight size={18} /></button>
+      </div>
+    </div>
   );
 }
 

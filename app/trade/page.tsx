@@ -6,6 +6,8 @@ import { getMarketDataProvider } from "@/lib/market-data/provider";
 import { getCurrentUser } from "@/lib/auth/session";
 import { TradeOrderTicket } from "@/components/markets/TradeOrderTicket";
 
+export const dynamic = "force-dynamic";
+
 type TradePageProps = {
   searchParams: Promise<{
     symbol?: string;
@@ -26,14 +28,6 @@ export default async function TradePage({ searchParams }: TradePageProps) {
   };
 
   const user = await getCurrentUser();
-  const activeUser = user || {
-    id: "cmv1uievr0006kblrots79t8e",
-    firstName: "Solomon",
-    lastName: "Adams",
-    email: "adamssolomon838@gmail.com",
-    role: "USER",
-    status: "ACTIVE",
-  };
 
   return (
     <main>
@@ -50,11 +44,7 @@ export default async function TradePage({ searchParams }: TradePageProps) {
         </div>
 
         <div className="rounded-[calc(var(--radius-brand)+10px)] bg-brand-surface p-2 shadow-border">
-          <TradeOrderTicket
-            user={activeUser}
-            instrument={selected}
-            currency={brand.currencyDefault}
-          />
+          {user ? <TradeOrderTicket user={user} instrument={selected} currency={brand.currencyDefault} /> : <TradingAccessPrompt />}
         </div>
       </section>
 
@@ -62,5 +52,21 @@ export default async function TradePage({ searchParams }: TradePageProps) {
         <LiveMarketTable quotes={quotes} currency={brand.currencyDefault} pageSize={6} />
       </section>
     </main>
+  );
+}
+
+function TradingAccessPrompt() {
+  return (
+    <aside className="flex min-h-[31rem] flex-col justify-between rounded-brand bg-brand-background/45 p-6 sm:p-8">
+      <div>
+        <p className="inline-flex rounded-full border border-brand-primary/30 bg-brand-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-brand-primary">Live trading</p>
+        <h2 className="mt-5 font-heading text-3xl font-bold text-white">Sign in to place a trade</h2>
+        <p className="mt-3 max-w-md text-sm leading-6 text-brand-secondary">You can explore live market prices here. To open an order ticket or view a balance, sign in to your own secure account.</p>
+      </div>
+      <div className="space-y-3">
+        <LinkButton href="/auth/login?redirect=%2Ftrade" className="w-full justify-center">Sign in to trade</LinkButton>
+        <LinkButton href="/auth/register" variant="secondary" className="w-full justify-center">Create a free account</LinkButton>
+      </div>
+    </aside>
   );
 }

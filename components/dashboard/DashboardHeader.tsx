@@ -15,7 +15,7 @@ interface DashboardHeaderProps {
   onOpenDeposit: () => void;
   onOpenWithdraw: () => void;
   onOpenNewOrder: () => void;
-  kycStatus?: "VERIFIED" | "PENDING" | "UNVERIFIED";
+  kycStatus?: string;
 }
 
 export function DashboardHeader({
@@ -25,9 +25,10 @@ export function DashboardHeader({
   onOpenDeposit,
   onOpenWithdraw,
   onOpenNewOrder,
-  kycStatus = "VERIFIED",
+  kycStatus,
 }: DashboardHeaderProps) {
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ") || "Trader";
+  const isKycApproved = kycStatus === "APPROVED" || kycStatus === "VERIFIED";
 
   return (
     <div className="flex flex-col gap-6 border-b border-white/10 pb-6 lg:flex-row lg:items-center lg:justify-between">
@@ -41,15 +42,13 @@ export function DashboardHeader({
             <h1 className="font-heading text-2xl font-bold tracking-tight text-brand-text sm:text-3xl">
               {fullName}
             </h1>
-            <span className="inline-flex items-center gap-1 rounded-full border border-brand-primary/30 bg-brand-primary/10 px-2.5 py-0.5 text-xs font-semibold text-brand-primary">
+            <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${isKycApproved ? "border-brand-primary/30 bg-brand-primary/10 text-brand-primary" : "border-amber-400/30 bg-amber-400/10 text-amber-200"}`}>
               <ShieldCheck className="h-3.5 w-3.5" />
-              {kycStatus === "VERIFIED" ? "KYC Level 2 Verified" : "Verification in Review"}
+              {isKycApproved ? "Identity verified" : "Verification in review"}
             </span>
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-brand-secondary sm:text-sm">
-            <span>{user.email || "trader@brokerage.com"}</span>
-            <span>•</span>
-            <span className="font-mono text-white/70">ID: ACC-774920</span>
+            <span>{user.email || "Signed-in trader"}</span>
             <span>•</span>
             <span className="inline-flex items-center gap-1 text-emerald-400">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />

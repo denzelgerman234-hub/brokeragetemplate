@@ -24,7 +24,7 @@ export function LoginForm({ brandName }: { brandName: string }) {
     const data = (await response.json().catch(() => null)) as { role?: string; errors?: Record<string, string[]> } | null;
     setLoading(false);
     if (!response.ok) {
-      setError(data?.errors?.email?.[0] ?? data?.errors?.password?.[0] ?? "We couldn’t sign you in right now. Please try again in a moment.");
+      setError(data?.errors?.email?.[0] ?? data?.errors?.password?.[0] ?? data?.errors?.form?.[0] ?? "We couldn’t sign you in right now. Please try again in a moment.");
       return;
     }
     router.push(data?.role === "ADMIN" ? "/admin" : "/dashboard");
@@ -50,10 +50,10 @@ export function LoginForm({ brandName }: { brandName: string }) {
             Forgot password?
           </Link>
         </div>
-        {error ? <p className="text-sm text-brand-danger">{error}</p> : null}
         <button disabled={loading} type="submit" className="rounded-brand bg-brand-primary px-4 py-3 text-sm font-semibold text-black transition-[opacity,scale] duration-150 hover:opacity-90 active:scale-[0.96] disabled:opacity-50">
           {loading ? "Signing in..." : "Sign in"}
         </button>
+        {error ? <p className="text-sm text-brand-danger" role="alert">{error}</p> : null}
         <p className="text-center text-sm text-brand-secondary">
           New to {brandName}?{" "}
           <Link href="/auth/register" className="font-semibold text-brand-primary">

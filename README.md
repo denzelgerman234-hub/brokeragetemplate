@@ -92,6 +92,7 @@ Set `NEXT_PUBLIC_AUTO_TRANSLATE=false` to disable browser-based Google Website T
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `DATABASE_URL` | Yes | Prisma connection string. SQLite locally; PostgreSQL for Neon or Supabase deployments. |
+| `HUMAN_CHALLENGE_SECRET` | Recommended | Long random, server-only value used to sign the 10-minute registration verification check. The database URL is used only as a compatibility fallback. |
 | `MARKET_DATA_PROVIDER` | No | Use `mock` for fully local/demo data. Any other value uses the hybrid live-provider path with safe fallbacks. |
 | `CG_API_KEY` | Optional | CoinGecko Demo API key for live crypto quotes and search. |
 | `TWELVE_DATA_API_KEY` | Optional | Twelve Data key for non-crypto quotes and historical data. |

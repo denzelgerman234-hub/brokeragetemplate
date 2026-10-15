@@ -19,6 +19,7 @@ interface TradeOrderTicketProps {
     firstName?: string;
     lastName?: string;
     email?: string;
+    kycStatus?: string;
   };
   instrument: MarketQuote;
   currency: string;
@@ -50,6 +51,7 @@ export function TradeOrderTicket({ user, instrument, currency }: TradeOrderTicke
   const pipValue = markPrice > 0 ? (notional * 0.0001) : 0;
 
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ") || "Trader";
+  const isKycApproved = user.kycStatus === "APPROVED";
 
   const handleSubmit = () => {
     setError("");
@@ -278,14 +280,14 @@ export function TradeOrderTicket({ user, instrument, currency }: TradeOrderTicke
       {/* Quick links */}
       <div className="flex items-center justify-between text-[11px] text-brand-secondary border-t border-white/10 pt-3">
         <span className="flex items-center gap-1">
-          <ShieldCheck className="h-3.5 w-3.5 text-brand-primary" />
-          KYC Level 2 Verified
+          <ShieldCheck className={`h-3.5 w-3.5 ${isKycApproved ? "text-brand-primary" : "text-amber-400"}`} />
+          {isKycApproved ? "Identity verified" : "Identity verification pending"}
         </span>
         <Link
-          href="/dashboard"
+          href={isKycApproved ? "/dashboard" : "/dashboard/assistance"}
           className="flex items-center gap-1 text-brand-primary hover:underline font-semibold"
         >
-          Go to Dashboard <ExternalLink className="h-3 w-3" />
+          {isKycApproved ? "Go to Dashboard" : "View verification status"} <ExternalLink className="h-3 w-3" />
         </Link>
       </div>
     </div>
