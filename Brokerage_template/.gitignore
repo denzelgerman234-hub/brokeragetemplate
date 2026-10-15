@@ -1,9 +1,0 @@
-.next
-node_modules
-dist
-coverage
-.env
-.env.local
-*.log
-dev.db
-uploads
