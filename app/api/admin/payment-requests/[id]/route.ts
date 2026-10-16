@@ -31,7 +31,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           create: { userId: item.userId, type: "LIVE", currency: "USD", balance: item.amount, equity: item.amount },
         });
         await tx.transaction.create({
-          data: { userId: item.userId, type: "DEPOSIT", asset: item.asset, amount: item.amount, amountUsd: item.amount, txHash: item.reference || null, status: "COMPLETED" },
+          data: { userId: item.userId, accountType: "LIVE", type: "DEPOSIT", asset: item.asset, amount: item.amount, amountUsd: item.amount, txHash: item.reference || null, status: "COMPLETED" },
         });
       }
 

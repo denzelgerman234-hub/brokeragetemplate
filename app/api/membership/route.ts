@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
   if (!plan) return NextResponse.json({ error: "That membership plan is no longer available. Refresh the page or contact support for help." }, { status: 404 });
 
   const account = await prisma.account.findUnique({ where: { userId_type: { userId: user.id, type: "LIVE" } } });
-  if (plan.price > 0 && (!account || account.balance < plan.price)) {
+  if (plan.price > 0 && (!account || account.balance - account.marginUsed < plan.price)) {
     return NextResponse.json({ error: "Your Live wallet balance is not enough for this plan. Make a deposit and try again, or contact support if you think this is incorrect." }, { status: 400 });
   }
 
@@ -38,12 +38,12 @@ export async function POST(request: NextRequest) {
     await prisma.$transaction(async (tx: any) => {
       if (plan.price > 0 && account) {
         const updatedAccount = await tx.account.updateMany({
-          where: { id: account.id, balance: { gte: plan.price } },
+          where: { id: account.id, balance: { gte: plan.price + account.marginUsed } },
           data: { balance: { decrement: plan.price }, equity: { decrement: plan.price } },
         });
         if (updatedAccount.count !== 1) throw new Error("LIVE_BALANCE_CHANGED");
         await tx.transaction.create({
-          data: { userId: user.id, type: "WITHDRAWAL", asset: "USD", amount: plan.price, amountUsd: plan.price, status: "COMPLETED", txHash: `plan-${plan.id}-${Date.now()}` },
+          data: { userId: user.id, accountType: "LIVE", type: "MEMBERSHIP_PAYMENT", asset: "USD", amount: -plan.price, amountUsd: -plan.price, status: "COMPLETED", txHash: `plan-${plan.id}-${Date.now()}` },
         });
       }
 

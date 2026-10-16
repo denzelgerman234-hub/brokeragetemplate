@@ -1,251 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Sparkles, Coins, CheckCircle2, Lock, ArrowUpRight, Award } from "lucide-react";
-import { stakingVaults as initialVaults } from "@/components/dashboard/data";
-import type { StakingVault } from "@/components/dashboard/types";
-import { StakeModal } from "@/components/dashboard/Modals";
+import { useEffect, useMemo, useState } from "react";
+import { Lock, X } from "lucide-react";
 import { useCurrency } from "@/context/CurrencyContext";
+import { MembershipGateModal } from "./MembershipGateModal";
+
+type Vault = { id: string; asset: string; name: string; baseApy: number; minUsd: number; lockDays: number; allowed: boolean };
+type Stake = { id: string; asset: string; principal: number; baseApy: number; bonusApy: number; liveAccrued: number; lockDays: number; unlockAt: string | null };
+type State = { entitlements: { planName: string; maxStakingAssets: number; stakingApyBonus: number }; vaults: Vault[]; stakes: Stake[] };
 
 export function StakingEarnView() {
-  const { formatMoney } = useCurrency();
-  const [vaults, setVaults] = useState(initialVaults);
-  const [selectedVault, setSelectedVault] = useState<StakingVault | null>(null);
-  const [plan, setPlan] = useState<{ stakingApyBonus: number; badgeLabel: string } | null>(null);
-  useEffect(() => { fetch("/api/membership").then((response) => response.ok ? response.json() : null).then((data) => setPlan(data?.currentPlan ?? null)).catch(() => {}); }, []);
-  const apyBonus = plan?.stakingApyBonus ?? 0;
-
-  // Active user stakes
-  const [activeStakes, setActiveStakes] = useState([
-    {
-      id: "stk-1",
-      vaultId: "stake-usdt",
-      asset: "USDT",
-      name: "Tether Dollar Pool",
-      amount: 15000,
-      apy: 9.0,
-      earnedReward: 332.87,
-      period: "90 days",
-      daysLeft: 42,
-    },
-    {
-      id: "stk-2",
-      vaultId: "stake-btc",
-      asset: "BTC",
-      name: "Bitcoin Vault",
-      amount: 0.25,
-      apy: 4.5,
-      earnedReward: 0.0031,
-      period: "Flexible",
-      daysLeft: 0,
-    },
-  ]);
-
-  const [claimNotice, setClaimNotice] = useState<string | null>(null);
-  const [stakeError, setStakeError] = useState("");
-
-  function handleClaimReward(stakeId: string) {
-    const stk = activeStakes.find((s) => s.id === stakeId);
-    if (!stk) return;
-    setClaimNotice(`Claimed ${stk.earnedReward} ${stk.asset} to Main Funding Wallet.`);
-    setActiveStakes((prev) =>
-      prev.map((s) => (s.id === stakeId ? { ...s, earnedReward: 0 } : s))
-    );
-    setTimeout(() => setClaimNotice(null), 3000);
-  }
-
-  async function handleConfirmStake(vaultId: string, amount: number) {
-    const v = vaults.find((vault) => vault.id === vaultId);
-    if (!v) return false;
-    const response = await fetch("/api/staking", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ asset: v.symbol, amount, baseApy: v.apy }) });
-    const data = await response.json().catch(() => null) as { error?: string; stake?: { id?: string } } | null;
-    if (!response.ok) { setStakeError(data?.error ?? "We couldn’t create this stake."); return false; }
-    const newStake = { id: data?.stake?.id ?? `stk-${Date.now()}`, vaultId, asset: v.symbol, name: v.name, amount, apy: v.apy + apyBonus, earnedReward: 0, period: v.period, daysLeft: v.period === "Flexible" ? 0 : 30 };
-    setActiveStakes((prev) => [newStake, ...prev]);
-    setStakeError("");
-    setClaimNotice(`Staked ${amount} ${v.symbol} in ${v.name}. Daily yield accrual started.`);
-    setTimeout(() => setClaimNotice(null), 3000);
-    return true;
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand-primary">Passive Yield Generation</p>
-        <h1 className="font-heading text-2xl font-bold text-white sm:text-3xl">Staking & Yield Vaults</h1>
-        <p className="text-xs text-brand-secondary mt-1">
-          Lock idle digital assets or subscribe to flexible daily compounding liquidity pools with bank-grade security.
-        </p>
-      </div>
-      {apyBonus > 0 && <div className="rounded-xl border border-brand-primary/30 bg-brand-primary/10 p-3 text-sm font-semibold text-brand-primary">{plan?.badgeLabel} +{apyBonus}% APY Booster Active</div>}
-
-      {claimNotice && (
-        <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-400 font-semibold animate-in fade-in">
-          <CheckCircle2 className="h-4 w-4" />
-          <span>{claimNotice}</span>
-        </div>
-      )}
-
-      {/* Aggregate Yield Stats */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-brand-primary/20 bg-brand-surface/70 p-5 shadow-sm backdrop-blur-md">
-          <span className="text-xs font-semibold uppercase tracking-wider text-brand-secondary">
-            Total Capital In Staking
-          </span>
-          <div className="mt-2 text-2xl font-extrabold text-white font-mono sm:text-3xl">
-            {formatMoney(31250)}
-          </div>
-          <p className="mt-1 text-xs text-brand-secondary">Across 2 active yield vaults</p>
-        </div>
-
-        <div className="rounded-2xl border border-white/10 bg-brand-surface/70 p-5 shadow-sm backdrop-blur-md">
-          <span className="text-xs font-semibold uppercase tracking-wider text-brand-secondary">
-            Total Accrued Yield
-          </span>
-          <div className="mt-2 text-2xl font-extrabold text-emerald-400 font-mono sm:text-3xl">
-            +{formatMoney(531.5)}
-          </div>
-          <p className="mt-1 text-xs text-emerald-400 font-mono">Disbursed automatically every 24h</p>
-        </div>
-
-        <div className="rounded-2xl border border-white/10 bg-brand-surface/70 p-5 shadow-sm backdrop-blur-md">
-          <span className="text-xs font-semibold uppercase tracking-wider text-brand-secondary">
-            Average APY
-          </span>
-          <div className="mt-2 text-2xl font-extrabold text-brand-primary font-mono sm:text-3xl">
-            7.85% APY
-          </div>
-          <p className="mt-1 text-xs text-brand-secondary">Audited smart vault contracts</p>
-        </div>
-      </div>
-
-      {/* Active User Stakes */}
-      <div className="rounded-2xl border border-white/10 bg-brand-surface/70 p-6 shadow-sm backdrop-blur-md">
-        <div className="border-b border-white/10 pb-4">
-          <h3 className="font-heading text-lg font-bold text-white">Your Active Staking Positions</h3>
-          <p className="text-xs text-brand-secondary">Claim accumulated daily rewards or review unlock schedules.</p>
-        </div>
-
-        <div className="mt-4 divide-y divide-white/5 text-xs">
-          {activeStakes.map((stake) => (
-            <div key={stake.id} className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h4 className="font-bold text-white text-sm">{stake.name}</h4>
-                  <span className="rounded-full border border-brand-primary/30 bg-brand-primary/10 px-2 py-0.5 text-[10px] font-bold text-brand-primary">
-                    {stake.apy}% APY
-                  </span>
-                </div>
-                <div className="mt-1 flex flex-wrap items-center gap-3 text-brand-secondary font-mono text-[11px]">
-                  <span>Principal: {stake.amount} {stake.asset}</span>
-                  <span>•</span>
-                  <span>Lock Type: {stake.period}</span>
-                  {stake.daysLeft > 0 ? (
-                    <>
-                      <span>•</span>
-                      <span className="text-amber-400">{stake.daysLeft} days until unlock</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>•</span>
-                      <span className="text-emerald-400">Flexible (Instant Unstake)</span>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <div className="text-right font-mono">
-                  <span className="font-bold text-emerald-400 text-sm">
-                    +{stake.earnedReward} {stake.asset}
-                  </span>
-                  <p className="text-[10px] text-brand-secondary">Unclaimed Reward</p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => handleClaimReward(stake.id)}
-                  disabled={stake.earnedReward === 0}
-                  className="rounded-xl bg-brand-primary px-3.5 py-1.5 text-xs font-bold text-black transition-all hover:brightness-105 active:scale-95 disabled:opacity-40"
-                >
-                  Claim
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Available Vaults Directory */}
-      <div className="rounded-2xl border border-white/10 bg-brand-surface/70 p-6 shadow-sm backdrop-blur-md">
-        <div className="border-b border-white/10 pb-4">
-          <h3 className="font-heading text-lg font-bold text-white">Available Yield Pools</h3>
-          <p className="text-xs text-brand-secondary">Institutional staking contracts with transparent reward compounding.</p>
-        </div>
-
-        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {vaults.map((vault) => (
-            <div
-              key={vault.id}
-              className="flex flex-col justify-between rounded-xl border border-white/10 bg-white/[0.02] p-4 transition-all hover:border-white/20 hover:bg-white/[0.04]"
-            >
-              <div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div
-                      className="flex h-9 w-9 items-center justify-center rounded-xl font-bold text-black text-xs"
-                      style={{ backgroundColor: vault.iconBg }}
-                    >
-                      {vault.symbol.slice(0, 1)}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-white text-sm">{vault.name}</h4>
-                      <p className="text-xs text-brand-secondary">{vault.symbol}</p>
-                    </div>
-                  </div>
-                  <span className="rounded-full border border-brand-primary/30 bg-brand-primary/10 px-2 py-0.5 text-xs font-mono font-bold text-brand-primary">
-                    {vault.apy + apyBonus}% APY
-                  </span>
-                </div>
-
-                <div className="mt-4 rounded-lg bg-black/30 p-2.5 text-xs space-y-1 font-mono">
-                  <div className="flex justify-between text-brand-secondary">
-                    <span>Lock:</span>
-                    <span className="text-white">{vault.period}</span>
-                  </div>
-                  <div className="flex justify-between text-brand-secondary">
-                    <span>Min:</span>
-                    <span className="text-white">{vault.minAmount} {vault.symbol}</span>
-                  </div>
-                  <div className="flex justify-between text-brand-secondary">
-                    <span>Pool:</span>
-                    <span className="text-white">{vault.totalStaked}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 border-t border-white/5 pt-3">
-                <button
-                  type="button"
-                  onClick={() => { setStakeError(""); setSelectedVault(vault); }}
-                  className="w-full rounded-xl bg-white/10 py-2 text-xs font-semibold text-white transition-all hover:bg-brand-primary hover:text-black"
-                >
-                  Stake {vault.symbol}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <StakeModal
-        vault={selectedVault}
-        isOpen={selectedVault !== null}
-        onClose={() => setSelectedVault(null)}
-        onConfirmStake={handleConfirmStake}
-      error={stakeError}
-      />
-    </div>
-  );
+  const { formatMoney } = useCurrency(); const [state, setState] = useState<State | null>(null); const [selected, setSelected] = useState<Vault | null>(null); const [amount, setAmount] = useState(100); const [gateOpen, setGateOpen] = useState(false); const [message, setMessage] = useState(""); const [busy, setBusy] = useState(false);
+  const refresh = async () => { const response = await fetch("/api/staking", { cache: "no-store" }); if (response.ok) setState(await response.json()); else setMessage("Unable to load staking data."); };
+  useEffect(() => { void refresh(); }, []);
+  const totals = useMemo(() => { const stakes = state?.stakes ?? []; const principal = stakes.reduce((sum, stake) => sum + stake.principal, 0); return { principal, accrued: stakes.reduce((sum, stake) => sum + stake.liveAccrued, 0), apy: principal ? stakes.reduce((sum, stake) => sum + stake.principal * (stake.baseApy + stake.bonusApy), 0) / principal : 0 }; }, [state]);
+  async function perform(body: object) { setBusy(true); setMessage(""); try { const response = await fetch("/api/staking", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); setMessage(data.message ?? "Updated."); await refresh(); } catch (cause) { setMessage(cause instanceof Error ? cause.message : "Could not update stake."); } finally { setBusy(false); } }
+  async function stake() { if (!selected) return; setBusy(true); setMessage(""); try { const response = await fetch("/api/staking", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ vaultId: selected.id, amountUsd: amount }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); setSelected(null); setMessage("Stake created. Yield now accrues continuously."); await refresh(); } catch (cause) { setMessage(cause instanceof Error ? cause.message : "Could not create stake."); } finally { setBusy(false); } }
+  return <div className="space-y-6"><div><p className="text-xs font-semibold uppercase tracking-wider text-brand-primary">Yield allocation</p><h1 className="font-heading text-2xl font-bold text-white sm:text-3xl">Staking & Earn</h1><p className="mt-1 text-xs text-brand-secondary">Stake USD-denominated simulation capital. Rewards accrue continuously using principal × APY × elapsed time ÷ 365 days.</p></div>{message && <p className="rounded-xl border border-brand-primary/30 bg-brand-primary/10 p-3 text-sm text-brand-primary">{message}</p>}
+    <div className="grid gap-4 sm:grid-cols-3"><Card label="Staked principal" value={formatMoney(totals.principal)} hint={`${state?.stakes.length ?? 0} active position(s)`}/><Card label="Accrued rewards" value={formatMoney(totals.accrued)} hint="Claimable to Live balance"/><Card label="Weighted APY" value={`${totals.apy.toFixed(2)}%`} hint={`${state?.entitlements.planName ?? ""} membership rate`}/></div>
+    <section className="rounded-2xl border border-white/10 bg-brand-surface/70 p-6"><div className="border-b border-white/10 pb-4"><h2 className="font-heading text-lg font-bold text-white">Your active stakes</h2><p className="text-xs text-brand-secondary">Unstake returns principal plus any unclaimed reward after the selected lock ends.</p></div>{state && state.stakes.length === 0 ? <p className="py-8 text-center text-sm text-brand-secondary">No active stake.</p> : <div className="divide-y divide-white/10">{state?.stakes.map((stake) => { const locked = stake.unlockAt && new Date(stake.unlockAt) > new Date(); return <div key={stake.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-white">{stake.asset} yield vault <span className="ml-2 rounded-full bg-brand-primary/15 px-2 py-0.5 text-xs text-brand-primary">{(stake.baseApy + stake.bonusApy).toFixed(2)}% APY</span></p><p className="mt-1 text-xs text-brand-secondary">{formatMoney(stake.principal)} principal · {formatMoney(stake.liveAccrued)} accrued · {locked ? `unlocks ${new Date(stake.unlockAt!).toLocaleDateString()}` : "flexible / unlocked"}</p></div><div className="flex gap-2"><button type="button" disabled={busy || stake.liveAccrued <= 0} onClick={() => void perform({ action: "CLAIM", stakeId: stake.id })} className="rounded-lg border border-brand-primary/40 px-3 py-2 text-xs font-bold text-brand-primary disabled:opacity-40">Claim</button><button type="button" disabled={busy || Boolean(locked)} onClick={() => void perform({ action: "UNSTAKE", stakeId: stake.id })} className="rounded-lg border border-white/15 px-3 py-2 text-xs font-bold text-white disabled:opacity-40">{locked ? "Locked" : "Unstake"}</button></div></div>; })}</div>}</section>
+    <section className="rounded-2xl border border-white/10 bg-brand-surface/70 p-6"><div className="flex justify-between gap-4 border-b border-white/10 pb-4"><div><h2 className="font-heading text-lg font-bold text-white">Yield vaults</h2><p className="text-xs text-brand-secondary">{state ? `${state.entitlements.maxStakingAssets} assets included with ${state.entitlements.planName}.` : "Loading vault access…"}</p></div>{state?.vaults.some((vault) => !vault.allowed) && <button type="button" onClick={() => setGateOpen(true)} className="text-xs font-bold text-brand-primary">View more assets</button>}</div><div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{state?.vaults.map((vault) => <article key={vault.id} className="flex flex-col justify-between rounded-xl border border-white/10 bg-black/15 p-4"><div className="flex justify-between"><div><h3 className="font-bold text-white">{vault.name}</h3><p className="text-xs text-brand-secondary">{vault.asset} · minimum {formatMoney(vault.minUsd)}</p></div>{!vault.allowed && <Lock className="h-4 w-4 text-amber-300"/>}</div><p className="mt-4 font-mono text-xl font-bold text-brand-primary">{(vault.baseApy + (state?.entitlements.stakingApyBonus ?? 0)).toFixed(2)}% APY</p><p className="mt-1 text-xs text-brand-secondary">{vault.lockDays ? `${vault.lockDays}-day lock` : "Flexible withdrawal"}</p><button type="button" onClick={() => vault.allowed ? (setAmount(vault.minUsd), setSelected(vault)) : setGateOpen(true)} className="mt-4 rounded-lg bg-brand-primary px-3 py-2 text-xs font-bold text-black">{vault.allowed ? `Stake ${vault.asset}` : "Unlock asset"}</button></article>)}</div></section>
+    {selected && <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4"><div className="w-full max-w-md rounded-2xl border border-white/15 bg-brand-surface p-6"><div className="flex justify-between"><div><h2 className="font-heading text-lg font-bold text-white">Stake {selected.asset}</h2><p className="text-xs text-brand-secondary">Minimum {formatMoney(selected.minUsd)} · {selected.lockDays ? `${selected.lockDays}-day lock` : "Flexible"}</p></div><button type="button" onClick={() => setSelected(null)} className="text-brand-secondary"><X/></button></div><label className="mt-5 block text-xs text-brand-secondary">USD allocation<input type="number" min={selected.minUsd} value={amount} onChange={(event) => setAmount(Number(event.target.value))} className="mt-1 w-full rounded-lg border border-white/15 bg-black/20 p-3 text-white"/></label><button type="button" disabled={busy} onClick={() => void stake()} className="mt-5 w-full rounded-lg bg-brand-primary p-3 text-sm font-bold text-black disabled:opacity-50">{busy ? "Creating…" : "Confirm stake"}</button></div></div>}
+    <MembershipGateModal open={gateOpen} onClose={() => setGateOpen(false)} feature="additional staking assets" />
+  </div>;
 }
+function Card({ label, value, hint }: { label: string; value: string; hint: string }) { return <div className="rounded-2xl border border-white/10 bg-brand-surface/70 p-5"><p className="text-xs font-semibold uppercase tracking-wider text-brand-secondary">{label}</p><p className="mt-2 font-mono text-2xl font-extrabold text-white">{value}</p><p className="mt-1 text-xs text-brand-secondary">{hint}</p></div>; }

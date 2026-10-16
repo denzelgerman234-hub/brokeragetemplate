@@ -1,213 +1,43 @@
 "use client";
 
 import { useState } from "react";
-import { Users, Award, Shield, Check, Play, Pause, X, ArrowUpRight } from "lucide-react";
-import { strategyProviders } from "@/components/dashboard/data";
-import type { StrategyProvider } from "@/components/dashboard/types";
-import { Sparkline } from "@/components/markets/Sparkline";
-import { CopyTraderModal } from "@/components/dashboard/Modals";
-import { useCopyTrading } from "@/lib/services/copyTrading";
+import { Lock, Pause, Play, X } from "lucide-react";
+import { useCopyTrading, type CopyProvider } from "@/lib/services/copyTrading";
 import { useCurrency } from "@/context/CurrencyContext";
+import { MembershipGateModal } from "./MembershipGateModal";
 
 export function CopyTradingView() {
-  const { currency, formatMoney } = useCurrency();
-  const [providers, setProviders] = useState(strategyProviders);
-  const [selectedProvider, setSelectedProvider] = useState<StrategyProvider | null>(null);
+  const { formatMoney } = useCurrency();
+  const { providers, subscriptions, entitlements, isLoading: loading, error, copyProvider, pauseSubscription, resumeSubscription, revokeSubscription } = useCopyTrading();
+  const [selected, setSelected] = useState<CopyProvider | null>(null);
+  const [amount, setAmount] = useState(500);
+  const [drawdown, setDrawdown] = useState(15);
+  const [gateOpen, setGateOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const totalAllocated = subscriptions.filter((item) => item.status !== "REVOKED").reduce((sum, item) => sum + item.allocatedAmount, 0);
 
-  const { subscriptions, copyProvider, pauseSubscription, resumeSubscription, revokeSubscription } = useCopyTrading();
-  async function handleConfirmCopy(providerId: string, amount: number, maxDrawdown = 15) {
-    const provider = providers.find((item) => item.id === providerId);
-    if (provider) await copyProvider(provider, amount, maxDrawdown);
+  async function confirmCopy() {
+    if (!selected) return;
+    setSubmitting(true); setActionError("");
+    try { await copyProvider(selected, amount, drawdown); setSelected(null); }
+    catch (cause) { setActionError(cause instanceof Error ? cause.message : "Unable to start copying this strategy."); }
+    finally { setSubmitting(false); }
   }
 
-  const totalAllocated = subscriptions.reduce((a, b) => a + b.allocatedAmount, 0);
-  const totalCopyPnl = 0;
-
-  return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand-primary">Automated Social Trading</p>
-        <h1 className="font-heading text-2xl font-bold text-white sm:text-3xl">Copy Trading Management</h1>
-        <p className="text-xs text-brand-secondary mt-1">
-          Mirror trades from verified market leaders with automatic position sizing and capital drawdown protection. {currency !== "USD" ? `Displayed amounts are converted to ${currency}; trades settle in USD.` : ""}
-        </p>
-      </div>
-
-      {/* Aggregate Stats */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-brand-primary/20 bg-brand-surface/70 p-5 shadow-sm backdrop-blur-md">
-          <span className="text-xs font-semibold uppercase tracking-wider text-brand-secondary">
-            Total Capital In Mirroring
-          </span>
-          <div className="mt-2 text-2xl font-extrabold text-white font-mono sm:text-3xl">
-            {formatMoney(totalAllocated)}
-          </div>
-          <p className="mt-1 text-xs text-brand-secondary">Across {subscriptions.length} active strategy providers</p>
-        </div>
-
-        <div className="rounded-2xl border border-white/10 bg-brand-surface/70 p-5 shadow-sm backdrop-blur-md">
-          <span className="text-xs font-semibold uppercase tracking-wider text-brand-secondary">
-            Net Copy Trading Profits
-          </span>
-          <div className="mt-2 text-2xl font-extrabold text-emerald-400 font-mono sm:text-3xl">
-            +{formatMoney(totalCopyPnl)}
-          </div>
-          <p className="mt-1 text-xs text-emerald-400 font-mono">+19.3% average return</p>
-        </div>
-
-        <div className="rounded-2xl border border-white/10 bg-brand-surface/70 p-5 shadow-sm backdrop-blur-md">
-          <span className="text-xs font-semibold uppercase tracking-wider text-brand-secondary">
-            Execution SLA
-          </span>
-          <div className="mt-2 text-xl font-bold text-white font-mono">
-            &lt; 5ms Proportional Fill
-          </div>
-          <p className="mt-1 text-xs text-brand-secondary">Direct memory bus mirror routing</p>
-        </div>
-      </div>
-
-      {/* Section 1: Active Subscriptions */}
-      <div className="rounded-2xl border border-white/10 bg-brand-surface/70 p-6 shadow-sm backdrop-blur-md">
-        <div className="border-b border-white/10 pb-4">
-          <h3 className="font-heading text-lg font-bold text-white">Your Active Strategy Subscriptions</h3>
-          <p className="text-xs text-brand-secondary">Manage capital allocated to each master trader and pause/resume execution.</p>
-        </div>
-
-        {subscriptions.length === 0 ? (
-          <div className="py-8 text-center text-xs text-brand-secondary">
-            You are not currently copying any strategy providers. Browse verified traders below to start mirroring.
-          </div>
-        ) : (
-          <div className="mt-4 divide-y divide-white/5 text-xs">
-            {subscriptions.map((sub) => (
-              <div key={sub.id} className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="flex items-center gap-2.5">
-                    <h4 className="font-bold text-white text-sm">{sub.providerName}</h4>
-                    <span className="text-brand-secondary font-mono">{sub.providerHandle}</span>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                        sub.status === "ACTIVE"
-                          ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
-                          : "bg-amber-500/15 text-amber-400 border border-amber-500/30"
-                      }`}
-                    >
-                      {sub.status}
-                    </span>
-                  </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-4 text-brand-secondary font-mono text-[11px]">
-                    <span>Allocated: {formatMoney(sub.allocatedAmount)}</span>
-                    <span>•</span>
-                    <span>Max Stop-Loss: {sub.maxDrawdown}%</span>
-                    <span>•</span>
-                    <span>Started: {new Date(sub.startedAt).toLocaleDateString()}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div className="text-right font-mono">
-                    <span className="font-bold text-emerald-400 text-sm">Live tracking</span>
-                    <p className="text-[11px] text-emerald-400/80">Ready for provider P&amp;L feed</p>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 font-sans">
-                    <button
-                      type="button"
-                      onClick={() => sub.status === "ACTIVE" ? pauseSubscription(sub.id) : resumeSubscription(sub.id)}
-                      className={`flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
-                        sub.status === "ACTIVE"
-                          ? "border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
-                          : "border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
-                      }`}
-                    >
-                      {sub.status === "ACTIVE" ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-                      <span>{sub.status === "ACTIVE" ? "Pause" : "Resume"}</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => revokeSubscription(sub.id)}
-                      className="rounded-xl border border-white/10 bg-white/5 p-1.5 text-brand-secondary hover:bg-rose-500/10 hover:text-rose-400"
-                      title="Stop copying & detach"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Section 2: Verified Strategy Providers Directory */}
-      <div className="rounded-2xl border border-white/10 bg-brand-surface/70 p-6 shadow-sm backdrop-blur-md">
-        <div className="border-b border-white/10 pb-4">
-          <h3 className="font-heading text-lg font-bold text-white">Verified Master Traders Directory</h3>
-          <p className="text-xs text-brand-secondary">Audited performance metrics with real funds under management.</p>
-        </div>
-
-        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {providers.map((p) => (
-            <div
-              key={p.id}
-              className="flex flex-col justify-between rounded-xl border border-white/10 bg-white/[0.02] p-4 transition-all hover:border-white/20 hover:bg-white/[0.04]"
-            >
-              <div>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 font-bold text-white">
-                      {p.avatar}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-white text-sm">{p.name}</h4>
-                      <p className="text-xs text-brand-secondary">{p.handle}</p>
-                    </div>
-                  </div>
-                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-brand-secondary">
-                    Risk {p.riskScore}/5
-                  </span>
-                </div>
-
-                <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg bg-black/30 p-2 text-xs font-mono">
-                  <div>
-                    <span className="text-[10px] text-brand-secondary uppercase">30d ROI</span>
-                    <p className="font-bold text-emerald-400">+{p.roi30d}%</p>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-brand-secondary uppercase">Win Rate</span>
-                    <p className="font-bold text-white">{p.winRate}%</p>
-                  </div>
-                </div>
-
-                <div className="mt-3">
-                  <Sparkline points={p.sparkline} positive className="h-8 w-full" />
-                </div>
-
-                <p className="mt-3 text-xs text-brand-secondary line-clamp-2">{p.description}</p>
-              </div>
-
-              <div className="mt-4 border-t border-white/5 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setSelectedProvider(p)}
-                  className="w-full rounded-xl bg-brand-primary py-2 text-xs font-bold text-black transition-all hover:brightness-105 active:scale-98"
-                >
-                  Copy Strategy
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <CopyTraderModal
-        provider={selectedProvider}
-        isOpen={selectedProvider !== null}
-        onClose={() => setSelectedProvider(null)}
-        onConfirmCopy={handleConfirmCopy}
-      />
-    </div>
-  );
+  return <div className="space-y-6">
+    <div><p className="text-xs font-semibold uppercase tracking-wider text-brand-primary">Strategy allocation</p><h1 className="font-heading text-2xl font-bold text-white sm:text-3xl">Copy Trading</h1><p className="mt-1 text-xs text-brand-secondary">Allocate Live-account capital to approved strategy subscriptions. Allocated capital is reserved from your available margin until you stop copying.</p></div>
+    {error && <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-300">{error}</p>}
+    <div className="grid gap-4 sm:grid-cols-3"><Stat label="Capital reserved" value={formatMoney(totalAllocated)} hint={`${subscriptions.length} subscription${subscriptions.length === 1 ? "" : "s"}`} /><Stat label="Strategy access" value={entitlements ? `${entitlements.maxCopyProviders} provider${entitlements.maxCopyProviders === 1 ? "" : "s"}` : "—"} hint={entitlements ? `${entitlements.planName} membership` : "Loading membership"} /><Stat label="Risk controls" value="Per strategy" hint="Drawdown limit chosen on activation" /></div>
+    <section className="rounded-2xl border border-white/10 bg-brand-surface/70 p-6"><div className="border-b border-white/10 pb-4"><h2 className="font-heading text-lg font-bold text-white">Your subscriptions</h2><p className="text-xs text-brand-secondary">Pause keeps the allocation reserved. Stopping a subscription releases it to your Live available margin.</p></div>
+      {!loading && subscriptions.length === 0 ? <p className="py-8 text-center text-sm text-brand-secondary">No strategy is active yet.</p> : <div className="divide-y divide-white/10">{subscriptions.map((sub) => <div key={sub.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-white">{sub.providerName} <span className="ml-2 text-xs text-brand-secondary">{sub.providerHandle}</span></p><p className="mt-1 text-xs text-brand-secondary">{formatMoney(sub.allocatedAmount)} reserved · {sub.maxDrawdown}% max drawdown · started {new Date(sub.startedAt).toLocaleDateString()}</p></div><div className="flex gap-2"><button type="button" onClick={() => sub.status === "ACTIVE" ? pauseSubscription(sub.id) : resumeSubscription(sub.id)} className="rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-white">{sub.status === "ACTIVE" ? <><Pause className="mr-1 inline h-3.5 w-3.5"/>Pause</> : <><Play className="mr-1 inline h-3.5 w-3.5"/>Resume</>}</button><button type="button" onClick={() => revokeSubscription(sub.id)} className="rounded-lg border border-rose-500/30 px-3 py-2 text-xs font-semibold text-rose-300"><X className="mr-1 inline h-3.5 w-3.5"/>Stop</button></div></div>)}</div>}
+    </section>
+    <section className="rounded-2xl border border-white/10 bg-brand-surface/70 p-6"><div className="flex items-start justify-between gap-4 border-b border-white/10 pb-4"><div><h2 className="font-heading text-lg font-bold text-white">Strategy directory</h2><p className="text-xs text-brand-secondary">Access is controlled by your current membership and also enforced by the server.</p></div>{providers.some((provider) => !provider.allowed) && <button type="button" onClick={() => setGateOpen(true)} className="text-xs font-bold text-brand-primary">View more strategies</button>}</div>
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{providers.map((provider) => <article key={provider.id} className="flex flex-col justify-between rounded-xl border border-white/10 bg-black/15 p-4"><div><div className="flex items-start justify-between gap-3"><div><h3 className="font-bold text-white">{provider.name}</h3><p className="text-xs text-brand-secondary">{provider.handle} · Risk {provider.riskScore}/5</p></div>{!provider.allowed && <Lock className="h-4 w-4 text-amber-300"/>}</div><div className="mt-4 grid grid-cols-2 gap-2 text-xs"><Metric label="30d ROI" value={`+${provider.roi30d}%`} /><Metric label="Win rate" value={`${provider.winRate}%`} /></div><p className="mt-3 text-xs text-brand-secondary">{provider.description}</p></div><button type="button" onClick={() => provider.allowed ? (setActionError(""), setSelected(provider)) : setGateOpen(true)} className="mt-4 rounded-lg bg-brand-primary px-3 py-2 text-xs font-bold text-black">{provider.allowed ? "Copy strategy" : "Unlock strategy"}</button></article>)}</div>
+    </section>
+    {selected && <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4"><div className="w-full max-w-md rounded-2xl border border-white/15 bg-brand-surface p-6 shadow-2xl"><div className="flex justify-between"><div><h2 className="font-heading text-lg font-bold text-white">Copy {selected.name}</h2><p className="text-xs text-brand-secondary">Your allocation is reserved from Live available margin.</p></div><button type="button" onClick={() => setSelected(null)} className="text-brand-secondary"><X/></button></div><label className="mt-5 block text-xs text-brand-secondary">Allocation (USD)<input type="number" min="1" value={amount} onChange={(event) => setAmount(Number(event.target.value))} className="mt-1 w-full rounded-lg border border-white/15 bg-black/20 p-3 text-white"/></label><label className="mt-3 block text-xs text-brand-secondary">Maximum drawdown (%)<input type="number" min="0" max="100" value={drawdown} onChange={(event) => setDrawdown(Number(event.target.value))} className="mt-1 w-full rounded-lg border border-white/15 bg-black/20 p-3 text-white"/></label>{actionError && <p className="mt-3 text-xs text-rose-300">{actionError}</p>}<button type="button" disabled={submitting} onClick={confirmCopy} className="mt-5 w-full rounded-lg bg-brand-primary p-3 text-sm font-bold text-black disabled:opacity-50">{submitting ? "Starting…" : "Start copying"}</button></div></div>}
+    <MembershipGateModal open={gateOpen} onClose={() => setGateOpen(false)} feature="more copy strategies" />
+  </div>;
 }
+function Stat({ label, value, hint }: { label: string; value: string; hint: string }) { return <div className="rounded-2xl border border-white/10 bg-brand-surface/70 p-5"><p className="text-xs font-semibold uppercase tracking-wider text-brand-secondary">{label}</p><p className="mt-2 font-mono text-2xl font-extrabold text-white">{value}</p><p className="mt-1 text-xs text-brand-secondary">{hint}</p></div>; }
+function Metric({ label, value }: { label: string; value: string }) { return <div className="rounded-lg bg-white/5 p-2"><p className="text-[10px] uppercase text-brand-secondary">{label}</p><p className="font-mono font-bold text-emerald-400">{value}</p></div>; }

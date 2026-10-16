@@ -15,7 +15,8 @@
     "new-brand": "node scripts/new-brand.mjs",
     "check:brand-leaks": "node scripts/check-brand-leaks.mjs",
     "crawl": "node scripts/crawl-routes.mjs",
-    "prisma:generate": "prisma generate"
+    "prisma:generate": "prisma generate",
+    "prisma:deploy": "prisma generate --schema prisma/schema.postgres.prisma && prisma migrate deploy --schema prisma/schema.postgres.prisma"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

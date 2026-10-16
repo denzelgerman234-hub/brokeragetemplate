@@ -88,6 +88,8 @@ model MembershipPlan {
   hasAccountManager  Boolean  @default(false)
   badgeLabel         String   @default("STANDARD")
   demoAllocation     Float    @default(25000)
+  maxStakingAssets   Int      @default(4)
+  maxCopyProviders   Int      @default(1)
   users              User[]
 }
 
@@ -140,6 +142,7 @@ model Account {
 model Position {
   id         String   @id @default(cuid())
   userId     String
+  accountType String   @default("LIVE")
   symbol     String
   side       String
   size       Float
@@ -152,6 +155,7 @@ model Position {
   openedAt   DateTime @default(now())
   closedAt   DateTime?
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, accountType, status])
 }
 
 model Order {
@@ -185,6 +189,7 @@ model CopySubscription {
 model Transaction {
   id        String   @id @default(cuid())
   userId    String
+  accountType String @default("LIVE")
   type      String
   asset     String
   amount    Float
@@ -193,6 +198,7 @@ model Transaction {
   status    String   @default("PENDING")
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, accountType, createdAt])
 }
 
 model StakingPosition {
@@ -206,6 +212,8 @@ model StakingPosition {
   status      String   @default("ACTIVE")
   startedAt   DateTime @default(now())
   lastAccruedAt DateTime @default(now())
+  lockDays    Int      @default(0)
+  unlockAt    DateTime?
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId, status])
 }

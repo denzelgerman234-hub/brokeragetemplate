@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/auth/session";
+import { OverviewDashboard } from "@/components/portal/OverviewDashboard";
 import { redirect } from "next/navigation";
 
 export const metadata = {
@@ -9,8 +10,5 @@ export const metadata = {
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user || user.status !== "ACTIVE") redirect("/auth/login?redirect=%2Fdashboard");
-  // The legacy overview contains sample balances and positions. Send signed-in
-  // clients to the database-backed portfolio rather than presenting samples as
-  // their live account data.
-  redirect("/dashboard/portfolio");
+  return <OverviewDashboard firstName={user.firstName} />;
 }

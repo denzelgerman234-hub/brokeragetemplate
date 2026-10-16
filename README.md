@@ -110,6 +110,15 @@ Set `NEXT_PUBLIC_AUTO_TRANSLATE=false` to disable browser-based Google Website T
 | `TWELVE_DATA_API_KEY` | Optional | Twelve Data key for non-crypto quotes and historical data. |
 | `BRAND` | Optional | Selects a generated brand configuration. |
 
+## Live and Demo account separation
+
+Every customer has isolated **Live** and **Demo** account modes. The Trade Desk selector controls which account receives a simulated order, reserves margin, and records its position and trade ledger events. Assets & Treasury and Wallet each provide the same selector and show only the selected account’s balance, open positions, and activity.
+
+- **Live** is the only mode that accepts deposits and withdrawal requests.
+- **Demo** uses virtual allocations only; it cannot be funded, withdrawn, or combined with Live capital.
+- Existing local records are classified as Live when the account-mode schema update is applied.
+
+After pulling this change locally, run `npm run prisma:generate` and `npx prisma db push`. For a hosted deployment, apply the corresponding Prisma schema change to the production database before deploying the application.
 ## Currency and FX
 
 All ledger balances, trades, deposits, and withdrawals settle in USD. The currency selector changes only the displayed, indicative conversion.
@@ -118,43 +127,21 @@ The FX adapter uses Exchange Rate API’s open endpoint. The provider requires t
 
 `npm run build` refreshes the bundled fallback snapshot first. A timeout or provider failure keeps the existing snapshot and does not fail the build.
 
-## Database options
+## Database and Vercel deployment
 
-Local development uses SQLite. Prisma models live in `prisma/schema.prisma`. For hosted PostgreSQL, change the datasource provider from `sqlite` to `postgresql` and set `DATABASE_URL` to your provider’s connection string. Do not deploy with `file:./dev.db`.
+Local development uses SQLite with `prisma/schema.prisma`. Production uses the committed PostgreSQL schema at `prisma/schema.postgres.prisma` and the committed migration in `prisma/migrations/`.
 
-### Neon PostgreSQL
+For a new hosted PostgreSQL database (Neon, Supabase, or another managed provider), set `DATABASE_URL` to its PostgreSQL connection string in Vercel. The included Vercel build runs `npm run prisma:deploy` before the Next.js build: it generates the PostgreSQL client and runs `prisma migrate deploy`. Do not change the local SQLite schema when preparing a deployment.
 
-1. Create a Neon project.
-2. Copy the production branch’s pooled PostgreSQL connection string from **Connect**.
-3. Store it as `DATABASE_URL` in the deployment environment.
-4. Change Prisma’s datasource provider to `postgresql`, preserving all models and fields.
-5. Run the initialization commands below.
+For an existing PostgreSQL database previously created with `prisma db push`, first back it up. Align it to `prisma/schema.postgres.prisma`, then baseline the initial migration using `npx prisma migrate resolve --schema prisma/schema.postgres.prisma --applied 20261016094500_init_postgres`. Do this once only, after verifying the database matches the schema.
 
-See [Neon’s Prisma guidance](https://neon.com/blog/better-postgres-with-prisma-experience) for connection and workflow details.
+### Membership, staking, and copy-trading rules
 
-### Supabase PostgreSQL
-
-1. Create a Supabase project and securely store its database password.
-2. In **Connect**, copy a PostgreSQL connection string.
-3. For serverless deployments, prefer the Supavisor transaction pooler (port `6543`); for long-lived servers, use the session pooler (port `5432`).
-4. Store it as `DATABASE_URL` in the deployment environment.
-5. Change Prisma’s datasource provider to `postgresql`, preserving all models and fields.
-6. Run the initialization commands below.
-
-This template accesses Prisma directly; it does not require `@supabase/supabase-js`. See the [Supabase Prisma guide](https://supabase.com/docs/guides/database/prisma).
-
-### Initialize a hosted database
-
-After changing Prisma to PostgreSQL and setting `DATABASE_URL`:
-
-```bash
-npm run prisma:generate
-npx prisma db push
-npm run seed
-```
-
-For a production team workflow, create and review Prisma migrations, commit them, and use `npx prisma migrate deploy` during deployment. Back up production data before destructive schema changes.
-
+- Standard includes four staking assets and one copy strategy; Pro includes seven assets and four strategies; VIP includes all ten assets and seven strategies.
+- The API, not only the UI, checks each entitlement before creating a stake or strategy subscription.
+- A stake reduces the Live balance. Rewards accrue continuously as `principal × (base APY + membership bonus) × elapsed seconds / seconds in a year`. Claiming rewards credits the Live balance; unstaking is permitted only after any configured lock and returns principal plus unclaimed reward.
+- A copy subscription reserves its allocation in Live `marginUsed`; pausing keeps it reserved, and stopping releases it. Membership payments and withdrawals cannot spend reserved capital.
+- These are deterministic template simulations. They do not connect to an exchange, execute external master-trader orders, or promise investment performance.
 ## Market data
 
 Without API keys, the app falls back to safe demo/mock data where appropriate. Keep production keys server-side—never use `NEXT_PUBLIC_*` variables, browser code, screenshots, or source control.
@@ -203,7 +190,7 @@ npm run crawl
 
 Deploy this as a **Next.js** App Router project. Do not add a catch-all SPA rewrite such as `/(.*) -> /index.html`; it would intercept API routes, authenticated dashboards, and Next’s 404 page.
 
-The included `vercel.json` pins the framework and generates the Prisma client during the build. Set all production variables before deployment, then verify `/`, `/auth/register`, `/auth/login`, `/admin/login`, and an intentionally invalid URL.
+The included `vercel.json` pins the framework, generates the PostgreSQL client, and deploys committed migrations during the build. Set all production variables before deployment, then verify `/`, `/auth/register`, `/auth/login`, `/admin/login`, and an intentionally invalid URL.
 
 Payment QR images uploaded through **Admin → Deposit details** are stored in the database rather than the Vercel filesystem. Keep individual QR images at or below 2 MB.
 

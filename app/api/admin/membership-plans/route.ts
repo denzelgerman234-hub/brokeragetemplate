@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     return NextResponse.json(plan);
   }
   const id = `plan-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "membership"}-${Date.now()}`;
-  const plan = await prisma.membershipPlan.create({ data: { id, ...data, stakingApyBonus: 0, tradingFeeDiscount: 0, hasAccountManager: false, demoAllocation: 25000 } });
+  const plan = await prisma.membershipPlan.create({ data: { id, ...data, stakingApyBonus: 0, tradingFeeDiscount: 0, hasAccountManager: false, demoAllocation: 25000, maxStakingAssets: 4, maxCopyProviders: 1 } });
   return NextResponse.json(plan, { status: 201 });
 }
 

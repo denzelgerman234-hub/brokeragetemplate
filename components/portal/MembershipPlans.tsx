@@ -15,6 +15,8 @@ type Plan = {
   hasAccountManager: boolean;
   badgeLabel: string;
   demoAllocation: number;
+  maxStakingAssets: number;
+  maxCopyProviders: number;
 };
 
 type PurchaseNotice = { planId: string; kind: "error" | "success"; text: string };
@@ -108,6 +110,8 @@ export function MembershipPlans() {
                   <Benefit text={`${formatMoney(plan.demoAllocation)} demo allocation`} />
                   <Benefit text={`+${plan.stakingApyBonus}% staking APY boost`} />
                   <Benefit text={`${plan.tradingFeeDiscount}% trading-fee discount`} />
+                  <Benefit text={`Access to ${plan.maxStakingAssets} staking assets`} />
+                  <Benefit text={`Copy up to ${plan.maxCopyProviders} strategy ${plan.maxCopyProviders === 1 ? "provider" : "providers"}`} />
                   <Benefit text={plan.hasAccountManager ? "Dedicated personal account manager" : "Standard support"} />
                 </ul>
                 {insufficient ? (
