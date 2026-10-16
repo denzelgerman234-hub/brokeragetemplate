@@ -44,6 +44,18 @@ Copy-Item .env.example .env
 
 The supplied `.env.example` uses SQLite (`file:./dev.db`) and safe mock fallbacks when market-data keys are blank. This is the recommended local evaluation setup.
 
+### Local client demo
+
+A client can clone the repository and run the commands above to use a complete local demo before a hosted database is chosen. `npx prisma db push` creates a private SQLite `dev.db` for that machine; `npm run seed` adds the starting membership packages. New users can then register, sign in, submit KYC or funding requests, and use the other database-backed demo flows locally.
+
+Before sharing the project, replace the `HUMAN_CHALLENGE_SECRET` placeholder in `.env` with a long random value. For example, in PowerShell:
+
+```powershell
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+```
+
+Copy the printed value into `.env` after `HUMAN_CHALLENGE_SECRET=`. Never commit `.env` or the generated `dev.db`. SQLite is only for local evaluation: use hosted PostgreSQL before deploying the shared client backend to Vercel.
+
 ## What is included
 
 - Public marketing, instrument, education, legal, FAQ, and contact pages
