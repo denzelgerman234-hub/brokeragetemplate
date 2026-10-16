@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 
 export const notificationTypes = {
   welcome: "welcome",
+  kycReminder: "kyc_reminder",
   newMessage: "new_message",
   accountManagerMessage: "account_manager_message",
   kycSubmitted: "kyc_submitted",

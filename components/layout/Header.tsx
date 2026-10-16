@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { ActionArrowGlyph, CloseGlyph, MenuGlyph, MoonGlyph, SunGlyph } from "@/components/icons/TradingGlyphs";
 import { formatFxTimestamp, RegionControl } from "@/components/layout/RegionControl";
@@ -35,6 +35,7 @@ export function Header() {
   const [menuOpen, setMenuOpen] = useState<"markets" | "tools" | "company" | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const { updatedAt, notice } = useCurrency();
+  useEffect(() => { const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") { setMenuOpen(null); setOpen(false); } }; window.addEventListener("keydown", onKeyDown); return () => window.removeEventListener("keydown", onKeyDown); }, []);
 
   function toggleTheme() {
     const next = theme === "dark" ? "light" : "dark";

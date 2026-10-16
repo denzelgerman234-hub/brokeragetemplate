@@ -61,13 +61,22 @@ export async function POST(request: Request) {
       },
     });
 
-    await createNotification({
-      recipientId: user.id,
-      type: notificationTypes.welcome,
-      title: "Welcome to your trading workspace",
-      body: "Your Live account is ready and your Demo account has been created.",
-      metadata: { href: "/dashboard" },
-    });
+    await Promise.all([
+      createNotification({
+        recipientId: user.id,
+        type: notificationTypes.welcome,
+        title: "Welcome to your trading workspace",
+        body: "Your Live account is ready and your Demo account has been created.",
+        metadata: { href: "/dashboard" },
+      }),
+      createNotification({
+        recipientId: user.id,
+        type: notificationTypes.kycReminder,
+        title: "Complete identity verification",
+        body: "Submit your identity document to begin the manual verification review.",
+        metadata: { href: "/dashboard/assistance" },
+      }),
+    ]);
 
     await createSession(user.id);
 

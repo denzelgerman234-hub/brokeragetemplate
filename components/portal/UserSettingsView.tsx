@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import {
   User,
@@ -31,6 +32,8 @@ interface UserSettingsViewProps {
     timezone?: string;
     twoFactorEnabled?: boolean;
     role: string;
+    kycStatus?: string;
+    kycSubmissionCount?: number;
   };
   defaultTab?: string;
 }
@@ -41,14 +44,18 @@ export function UserSettingsView({ initialUser, defaultTab = "profile" }: UserSe
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [user, setUser] = useState(initialUser);
 
+  const kycApproved = user.kycStatus === "APPROVED";
+  const kycRejected = user.kycStatus === "REJECTED";
+  const kycSubmitted = (user.kycSubmissionCount ?? 0) > 0;
+
   // Profile Form state
   const [firstName, setFirstName] = useState(user.firstName || "");
   const [lastName, setLastName] = useState(user.lastName || "");
   const [email, setEmail] = useState(user.email || "");
-  const [phone, setPhone] = useState(user.phone || "+1 (555) 234-5678");
-  const [country, setCountry] = useState(user.country || "United States");
-  const [address, setAddress] = useState(user.address || "120 Wall Street, Suite 400");
-  const [timezone, setTimezone] = useState(user.timezone || "America/New_York (UTC-5)");
+  const [phone, setPhone] = useState(user.phone || "");
+  const [country, setCountry] = useState(user.country || "");
+  const [address, setAddress] = useState(user.address || "");
+  const [timezone, setTimezone] = useState(user.timezone || "UTC");
 
   // Password state
   const [currentPassword, setCurrentPassword] = useState("");
@@ -622,43 +629,9 @@ export function UserSettingsView({ initialUser, defaultTab = "profile" }: UserSe
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {/* Tier 1 */}
-            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-xs">
-              <span className="text-[10px] uppercase font-bold text-brand-secondary">Tier 1 • Basic</span>
-              <h4 className="mt-1 font-bold text-white text-base">Email & Phone Verified</h4>
-              <p className="mt-2 text-brand-secondary">Deposit Limit: {formatMoney(5000, { currency: "USD" })}{currency !== "USD" ? ` (≈ ${formatMoney(5000)})` : ""} / day</p>
-              <p className="text-brand-secondary">Withdrawal Limit: {formatMoney(2000, { currency: "USD" })}{currency !== "USD" ? ` (≈ ${formatMoney(2000)})` : ""} / day</p>
-              <div className="mt-4 flex items-center gap-1.5 text-emerald-400 font-bold">
-                <CheckCircle2 className="h-4 w-4" />
-                <span>Completed</span>
-              </div>
-            </div>
-
-            {/* Tier 2 */}
-            <div className="rounded-xl border border-brand-primary/40 bg-brand-primary/5 p-4 text-xs shadow-inner">
-              <span className="text-[10px] uppercase font-bold text-brand-primary">Tier 2 • Pro Verified</span>
-              <h4 className="mt-1 font-bold text-white text-base">Government ID & Proof of Address</h4>
-              <p className="mt-2 text-white/90">Deposit Limit: Unlimited</p>
-              <p className="text-white/90">Withdrawal Limit: {formatMoney(100000, { currency: "USD" })}{currency !== "USD" ? ` (≈ ${formatMoney(100000)})` : ""} / day</p>
-              <div className="mt-4 flex items-center gap-1.5 text-brand-primary font-bold">
-                <CheckCircle2 className="h-4 w-4" />
-                <span>Active Status</span>
-              </div>
-            </div>
-
-            {/* Tier 3 */}
-            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-xs">
-              <span className="text-[10px] uppercase font-bold text-brand-secondary">Tier 3 • Institutional VIP</span>
-              <h4 className="mt-1 font-bold text-white text-base">Source of Wealth & Video KYC</h4>
-              <p className="mt-2 text-brand-secondary">Deposit Limit: Unlimited</p>
-              <p className="text-brand-secondary">Withdrawal Limit: Unlimited</p>
-              <button
-                type="button"
-                className="mt-4 rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white hover:bg-white/10"
-              >
-                Apply for VIP Tier
-              </button>
-            </div>
+            <div className={`rounded-xl border p-4 text-xs ${!kycApproved ? "border-brand-primary/40 bg-brand-primary/5" : "border-white/10 bg-white/[0.02]"}`}><span className="text-[10px] font-bold uppercase text-brand-secondary">Tier 1 • Account setup</span><h4 className="mt-1 text-base font-bold text-white">Profile &amp; sign-in</h4><p className="mt-2 text-brand-secondary">Your account profile and sign-in are active.</p><div className="mt-4 flex items-center gap-1.5 font-bold text-emerald-400"><CheckCircle2 className="h-4 w-4" /><span>Active</span></div></div>
+            <div className={`rounded-xl border p-4 text-xs ${kycApproved ? "border-emerald-400/40 bg-emerald-400/5" : "border-white/10 bg-white/[0.02]"}`}><span className={`text-[10px] font-bold uppercase ${kycApproved ? "text-emerald-400" : "text-brand-secondary"}`}>Tier 2 • Identity verified</span><h4 className="mt-1 text-base font-bold text-white">Government ID review</h4><p className="mt-2 text-brand-secondary">{kycApproved ? "Your identity verification has been approved." : kycRejected ? "Your verification needs an updated submission." : kycSubmitted ? "Your documents are under manual review." : "Submit your identity document to start verification."}</p>{kycApproved ? <div className="mt-4 flex items-center gap-1.5 font-bold text-emerald-400"><CheckCircle2 className="h-4 w-4" /><span>Approved</span></div> : <Link href="/dashboard/assistance" className="mt-4 inline-flex rounded-lg border border-brand-primary/30 bg-brand-primary/10 px-3 py-1 font-semibold text-brand-primary hover:bg-brand-primary/20">{kycRejected ? "Resubmit verification" : kycSubmitted ? "View verification" : "Start verification"}</Link>}</div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-xs"><span className="text-[10px] font-bold uppercase text-brand-secondary">Tier 3 • Institutional</span><h4 className="mt-1 text-base font-bold text-white">Enhanced review</h4><p className="mt-2 text-brand-secondary">Institutional eligibility is reviewed separately after identity verification.</p><button type="button" disabled={!kycApproved} className="mt-4 rounded-lg border border-white/10 bg-white/5 px-3 py-1 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40">Apply for VIP Tier</button></div>
           </div>
         </div>
       )}

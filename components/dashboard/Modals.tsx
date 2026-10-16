@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useDismissibleModal } from "@/components/ui/useDismissibleModal";
 import { X, Copy, Check, QrCode, ArrowDownLeft, ArrowUpRight, ShieldCheck, Zap, AlertTriangle, Sparkles } from "lucide-react";
 import type { StrategyProvider, StakingVault, Position } from "./types";
 import { formatCurrency } from "@/lib/utils";
@@ -22,6 +23,7 @@ interface DepositModalProps {
 }
 
 export function DepositModal({ isOpen, onClose, onDepositSuccess }: DepositModalProps) {
+  useDismissibleModal(isOpen, onClose);
   const { currency, formatMoney } = useCurrency();
   const [method, setMethod] = useState<"USDT" | "BTC" | "CARD" | "WIRE">("USDT");
   const [amount, setAmount] = useState("5000");
@@ -68,7 +70,7 @@ export function DepositModal({ isOpen, onClose, onDepositSuccess }: DepositModal
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+    <div role="dialog" aria-modal="true" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-brand-surface p-6 shadow-2xl">
         <button
           type="button"
@@ -209,6 +211,7 @@ interface WithdrawModalProps {
 }
 
 export function WithdrawModal({ isOpen, onClose, availableBalance, onWithdrawSuccess }: WithdrawModalProps) {
+  useDismissibleModal(isOpen, onClose);
   const { currency, formatMoney } = useCurrency();
   const [asset, setAsset] = useState("USDT");
   const [address, setAddress] = useState("");
@@ -243,7 +246,7 @@ export function WithdrawModal({ isOpen, onClose, availableBalance, onWithdrawSuc
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+    <div role="dialog" aria-modal="true" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-brand-surface p-6 shadow-2xl">
         <button
           type="button"
@@ -380,6 +383,7 @@ const AVAILABLE_INSTRUMENTS = [
 ];
 
 export function NewOrderModal({ isOpen, onClose, onPlaceOrder, availableMargin }: NewOrderModalProps) {
+  useDismissibleModal(isOpen, onClose);
   const [symbol, setSymbol] = useState("BTC");
   const [side, setSide] = useState<"BUY" | "SELL">("BUY");
   const [leverage, setLeverage] = useState(50);
@@ -423,7 +427,7 @@ export function NewOrderModal({ isOpen, onClose, onPlaceOrder, availableMargin }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+    <div role="dialog" aria-modal="true" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-brand-surface p-6 shadow-2xl">
         <button
           type="button"
@@ -600,6 +604,7 @@ interface CopyTraderModalProps {
 }
 
 export function CopyTraderModal({ provider, isOpen, onClose, onConfirmCopy }: CopyTraderModalProps) {
+  useDismissibleModal(isOpen, onClose);
   const [allocation, setAllocation] = useState("5000");
   const [maxDrawdown, setMaxDrawdown] = useState("15");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -607,7 +612,7 @@ export function CopyTraderModal({ provider, isOpen, onClose, onConfirmCopy }: Co
   if (!isOpen || !provider) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+    <div role="dialog" aria-modal="true" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-brand-surface p-6 shadow-2xl">
         <button
           type="button"
@@ -701,6 +706,7 @@ interface StakeModalProps {
 }
 
 export function StakeModal({ vault, isOpen, onClose, onConfirmStake, error = "" }: StakeModalProps) {
+  useDismissibleModal(isOpen, onClose);
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -711,7 +717,7 @@ export function StakeModal({ vault, isOpen, onClose, onConfirmStake, error = "" 
   const dailyReward = yearlyReward / 365;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+    <div role="dialog" aria-modal="true" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-brand-surface p-6 shadow-2xl">
         <button
           type="button"
