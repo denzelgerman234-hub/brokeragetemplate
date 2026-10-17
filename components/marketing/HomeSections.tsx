@@ -283,7 +283,7 @@ export function HomeSections({ brand, quotes }: HomeSectionsProps) {
               {t.heroSubheadline ?? brand.content.hero.subheadline}
             </p></ScrollReveal>
             <ScrollReveal delay={0.35}><div className="flex flex-wrap gap-3.5 pt-2">
-              <LinkButton href="/auth/register" className="shadow-[0_0_25px_-4px_rgba(0,231,88,0.5)]">{t.heroPrimary ?? brand.content.hero.primaryCta}</LinkButton>
+              <LinkButton href="/auth/register" className="shadow-[0_0_25px_-4px_rgba(29,102,234,0.5)]">{t.heroPrimary ?? brand.content.hero.primaryCta}</LinkButton>
               <LinkButton href="/auth/login" variant="secondary" className="border-white/15 bg-white/5 backdrop-blur-xl hover:bg-white/10">{t.heroSecondary ?? brand.content.hero.secondaryCta}</LinkButton>
             </div></ScrollReveal>
 

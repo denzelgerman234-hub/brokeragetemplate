@@ -207,19 +207,31 @@ interface WithdrawModalProps {
   isOpen: boolean;
   onClose: () => void;
   availableBalance: number;
-  onWithdrawSuccess: (amount: number, asset: string) => void;
+  onWithdrawSuccess: (amount: number, asset: string, destination: string) => void;
 }
 
 export function WithdrawModal({ isOpen, onClose, availableBalance, onWithdrawSuccess }: WithdrawModalProps) {
   useDismissibleModal(isOpen, onClose);
   const { currency, formatMoney } = useCurrency();
   const [asset, setAsset] = useState("USDT");
-  const [address, setAddress] = useState("");
   const [amount, setAmount] = useState("2500");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  // Crypto fields
+  const [walletAddress, setWalletAddress] = useState("");
+  const [walletNetwork, setWalletNetwork] = useState("TRC-20");
+
+  // Bank wire fields
+  const [bankName, setBankName] = useState("");
+  const [accountHolder, setAccountHolder] = useState("");
+  const [ibanAccount, setIbanAccount] = useState("");
+  const [swiftBic, setSwiftBic] = useState("");
+  const [bankNote, setBankNote] = useState("");
+
   if (!isOpen) return null;
+
+  const isCrypto = asset === "BTC" || asset === "USDT";
 
   const handleConfirm = () => {
     setError("");
@@ -232,14 +244,32 @@ export function WithdrawModal({ isOpen, onClose, availableBalance, onWithdrawSuc
       setError(`Amount exceeds your available free margin of ${formatCurrency(availableBalance, "USD")}.`);
       return;
     }
-    if (!address.trim()) {
-      setError("Please enter a destination wallet address or IBAN.");
-      return;
+
+    let destination = "";
+    if (isCrypto) {
+      if (!walletAddress.trim()) {
+        setError("Please enter your receiving crypto wallet address.");
+        return;
+      }
+      destination = `${asset} · ${walletNetwork} · ${walletAddress.trim()}`;
+    } else {
+      if (!bankName.trim() || !accountHolder.trim() || !ibanAccount.trim() || !swiftBic.trim()) {
+        setError("Please complete all required bank wire details (Bank Name, Beneficiary, IBAN, SWIFT/BIC).");
+        return;
+      }
+      const parts = [
+        `Bank: ${bankName.trim()}`,
+        `Beneficiary: ${accountHolder.trim()}`,
+        `IBAN/Acc: ${ibanAccount.trim()}`,
+        `SWIFT: ${swiftBic.trim()}`,
+        bankNote.trim() ? `Note: ${bankNote.trim()}` : "",
+      ].filter(Boolean);
+      destination = parts.join(" | ");
     }
 
     setIsSubmitting(true);
     setTimeout(() => {
-      onWithdrawSuccess(num, asset);
+      onWithdrawSuccess(num, asset, destination);
       setIsSubmitting(false);
       onClose();
     }, 600);
@@ -247,7 +277,7 @@ export function WithdrawModal({ isOpen, onClose, availableBalance, onWithdrawSuc
 
   return (
     <div role="dialog" aria-modal="true" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-brand-surface p-6 shadow-2xl">
+      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-white/10 bg-brand-surface p-6 shadow-2xl">
         <button
           type="button"
           onClick={onClose}
@@ -270,27 +300,110 @@ export function WithdrawModal({ isOpen, onClose, availableBalance, onWithdrawSuc
 
         <div className="mt-5 space-y-4">
           <div>
-            <label className="text-xs font-semibold text-brand-secondary">Withdrawal Asset</label>
+            <label className="text-xs font-semibold text-brand-secondary">Withdrawal Asset / Method</label>
             <select
               value={asset}
               onChange={(e) => setAsset(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-white/10 bg-[#181d18] px-3 py-2 text-sm text-white focus:border-brand-primary focus:outline-none"
+              className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-brand-primary focus:outline-none"
             >
-              <option value="USDT" className="bg-[#181d18] text-white">USDT (Tether - TRC20 / ERC20)</option>
-              <option value="BTC" className="bg-[#181d18] text-white">Bitcoin (BTC)</option>
-              <option value="USD" className="bg-[#181d18] text-white">Bank Wire (USD / EUR / GBP)</option>
+              <option value="USDT" className="bg-brand-surface text-white">USDT (Tether)</option>
+              <option value="BTC" className="bg-brand-surface text-white">Bitcoin (BTC)</option>
+              <option value="USD" className="bg-brand-surface text-white">Bank Wire (USD / EUR / GBP)</option>
             </select>
           </div>
 
-          <div>
-            <label className="text-xs font-semibold text-brand-secondary">Destination Address / IBAN</label>
-            <input
-              type="text"
-              placeholder={asset === "USD" ? "Enter Bank IBAN / SWIFT" : "Enter receiving crypto address"}
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-white focus:border-brand-primary focus:outline-none"
-            />
+          {/* Dynamic Destination Details */}
+          <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3.5 space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-brand-secondary">
+              {isCrypto ? "Destination Wallet Address" : "Destination Bank Account Details"}
+            </p>
+
+            {isCrypto ? (
+              <div className="space-y-3">
+                {asset === "USDT" && (
+                  <div>
+                    <label className="text-xs text-brand-secondary">Transfer Network</label>
+                    <select
+                      value={walletNetwork}
+                      onChange={(e) => setWalletNetwork(e.target.value)}
+                      className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-brand-primary focus:outline-none"
+                    >
+                      <option value="TRC-20" className="bg-brand-surface text-white">TRC-20 (Tron - recommended)</option>
+                      <option value="ERC-20" className="bg-brand-surface text-white">ERC-20 (Ethereum)</option>
+                      <option value="BEP-20" className="bg-brand-surface text-white">BEP-20 (Binance Smart Chain)</option>
+                    </select>
+                  </div>
+                )}
+                <div>
+                  <label className="text-xs text-brand-secondary">
+                    {asset} Receiving Address <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={asset === "BTC" ? "bc1q... or 1... or 3..." : "Enter your wallet address"}
+                    value={walletAddress}
+                    onChange={(e) => setWalletAddress(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-white focus:border-brand-primary focus:outline-none placeholder:text-brand-secondary/40"
+                  />
+                </div>
+                <p className="text-[11px] text-amber-300/80">⚠ Double-check your address and network. Withdrawals sent to an incompatible address cannot be reversed.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="text-xs text-brand-secondary">Bank Name <span className="text-rose-400">*</span></label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Barclays, Chase"
+                      value={bankName}
+                      onChange={(e) => setBankName(e.target.value)}
+                      className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-brand-primary focus:outline-none placeholder:text-brand-secondary/40"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-brand-secondary">Account Beneficiary Name <span className="text-rose-400">*</span></label>
+                    <input
+                      type="text"
+                      placeholder="Full legal account name"
+                      value={accountHolder}
+                      onChange={(e) => setAccountHolder(e.target.value)}
+                      className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-brand-primary focus:outline-none placeholder:text-brand-secondary/40"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-brand-secondary">IBAN / Account Number <span className="text-rose-400">*</span></label>
+                  <input
+                    type="text"
+                    placeholder="e.g. GB29 NWBK 6016 1331 9268 19"
+                    value={ibanAccount}
+                    onChange={(e) => setIbanAccount(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-white focus:border-brand-primary focus:outline-none placeholder:text-brand-secondary/40"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-brand-secondary">SWIFT / BIC Code <span className="text-rose-400">*</span></label>
+                  <input
+                    type="text"
+                    placeholder="e.g. NWBKGB2L"
+                    value={swiftBic}
+                    onChange={(e) => setSwiftBic(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-white focus:border-brand-primary focus:outline-none placeholder:text-brand-secondary/40"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-brand-secondary">Additional Notes / Routing (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="Sort code, transit number, reference..."
+                    value={bankNote}
+                    onChange={(e) => setBankNote(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-brand-primary focus:outline-none placeholder:text-brand-secondary/40"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div>
@@ -314,25 +427,23 @@ export function WithdrawModal({ isOpen, onClose, availableBalance, onWithdrawSuc
           </div>
           <CurrencyDisclosure />
 
-
           <div className="rounded-xl border border-white/10 bg-black/40 p-3 text-xs text-brand-secondary space-y-1.5">
             <div className="flex justify-between">
               <span>Estimated Execution:</span>
               <span className="text-white font-semibold">Under 15 minutes</span>
             </div>
             <div className="flex justify-between">
-              <span>Network Gas Fee:</span>
-              <span className="text-white font-semibold font-mono">{formatMoney(1)} USDT</span>
+              <span>Processing Fee:</span>
+              <span className="text-white font-semibold font-mono">{isCrypto ? `${formatMoney(1)} USDT` : `${formatMoney(5)} USD`}</span>
             </div>
             <div className="flex justify-between">
               <span>Net Payout:</span>
               <span className="text-emerald-400 font-bold font-mono">
-                {formatMoney(Math.max(0, (parseFloat(amount) || 0) - 1))}
+                {formatMoney(Math.max(0, (parseFloat(amount) || 0) - (isCrypto ? 1 : 5)))}
               </span>
             </div>
           </div>
         </div>
-
 
         <div className="mt-6 flex gap-3">
           <button

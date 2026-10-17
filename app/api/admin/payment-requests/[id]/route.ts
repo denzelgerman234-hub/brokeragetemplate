@@ -35,6 +35,24 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         });
       }
 
+      if (status === "APPROVED" && item.kind === "WITHDRAWAL") {
+        await tx.account.update({
+          where: { userId_type: { userId: item.userId, type: "LIVE" } },
+          data: { balance: { decrement: item.amount }, equity: { decrement: item.amount } },
+        });
+        await tx.transaction.updateMany({
+          where: { userId: item.userId, type: "WITHDRAWAL", status: "PENDING" },
+          data: { status: "COMPLETED" },
+        });
+      }
+
+      if (status === "REJECTED" && item.kind === "WITHDRAWAL") {
+        await tx.transaction.updateMany({
+          where: { userId: item.userId, type: "WITHDRAWAL", status: "PENDING" },
+          data: { status: "REJECTED" },
+        });
+      }
+
       if (status === "APPROVED" && item.kind === "PLAN" && item.planId) {
         const plan = await tx.membershipPlan.findUnique({ where: { id: item.planId } });
         await tx.user.update({ where: { id: item.userId }, data: { membershipPlanId: item.planId } });
@@ -48,8 +66,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       }
 
       const isDeposit = item.kind === "DEPOSIT";
+      const isWithdrawal = item.kind === "WITHDRAWAL";
       const type = isDeposit ? notificationTypes.depositStatusUpdate : notificationTypes.membershipStatusUpdate;
-      const subject = isDeposit ? "Deposit" : "Membership payment";
+      const subject = isDeposit ? "Deposit" : isWithdrawal ? "Withdrawal" : "Membership payment";
       const amount = item.asset === "USD"
         ? new Intl.NumberFormat("en", { style: "currency", currency: "USD" }).format(item.amount)
         : `${item.amount.toLocaleString("en-US", { maximumFractionDigits: 8 })} ${item.asset}`;
@@ -59,7 +78,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         type,
         title: `${subject} ${status.toLowerCase()}`,
         body: status === "APPROVED"
-          ? `${subject} of ${amount} has been approved.${isDeposit ? " Your Live balance is now updated." : " Your plan benefits are now active."}`
+          ? `${subject} of ${amount} has been approved.${isDeposit ? " Your Live balance is now updated." : isWithdrawal ? " Funds have been dispatched to your provided address/account." : " Your plan benefits are now active."}`
           : `${subject} of ${amount} was not approved.${body?.note ? " Review the note and submit an updated request." : ""}`,
         metadata: {
           paymentRequestId: item.id,
@@ -68,7 +87,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           amount: item.amount,
           asset: item.asset,
           planId: item.planId,
-          href: isDeposit ? "/dashboard/portfolio?tab=funding" : "/dashboard/plans",
+          href: isDeposit ? "/dashboard/portfolio?tab=funding" : isWithdrawal ? "/portal/assets?tab=ledger" : "/dashboard/plans",
         },
       }, tx);
 

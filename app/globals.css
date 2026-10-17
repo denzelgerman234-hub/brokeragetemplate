@@ -90,7 +90,7 @@ select {
 }
 
 select option {
-  background-color: #131613;
+  background-color: #0d1020;
   color: #f0f0f0;
 }
 
@@ -101,7 +101,7 @@ select option {
 
 ::selection {
   background: rgb(var(--color-primary));
-  color: #020403;
+  color: #ffffff;
 }
 
 .shadow-border {
@@ -1604,7 +1604,7 @@ body {
   font-size: 2.25rem !important;
   font-weight: 800 !important;
   line-height: 1 !important;
-  color: #00FF61 !important;
+  color: #1D66EA !important;
   letter-spacing: -0.04em !important;
   font-variant-numeric: tabular-nums;
 }
@@ -1625,7 +1625,7 @@ body {
   background: rgb(var(--color-surface));
   box-shadow: var(--shadow-border);
   transition: all 180ms ease;
-  border-left: 3px solid #00FF61;
+  border-left: 3px solid #1D66EA;
 }
 
 .mkt-metric-card:hover {
@@ -1638,7 +1638,7 @@ body {
   font-size: 1.85rem !important;
   font-weight: 800 !important;
   line-height: 1.1 !important;
-  color: #00FF61 !important;
+  color: #1D66EA !important;
   letter-spacing: -0.03em !important;
   font-variant-numeric: tabular-nums;
 }
@@ -1776,10 +1776,10 @@ body {
 .who-stats-banner {
   display: grid;
   grid-template-columns: 1fr;
-  background-color: #00FF61 !important; /* Brand vibrant green */
+  background-color: #1D66EA !important; /* Brand blue */
   border-radius: calc(var(--radius-brand) + 16px);
   padding: 2.5rem 1.5rem;
-  box-shadow: 0 16px 40px -10px rgba(0, 255, 97, 0.32);
+  box-shadow: 0 16px 40px -10px rgba(29, 102, 234, 0.32);
 }
 
 @media (min-width: 640px) {

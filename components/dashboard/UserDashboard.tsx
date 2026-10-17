@@ -97,7 +97,7 @@ export function UserDashboard({ user, brand }: UserDashboardProps) {
     setTransactions((prev) => [newTx, ...prev]);
   };
 
-  const handleWithdrawSuccess = (amount: number, asset: string) => {
+  const handleWithdrawSuccess = (amount: number, asset: string, destination?: string) => {
     setBalance((prev) => Math.max(0, prev - amount));
     const newTx: Transaction = {
       id: `tx-${Date.now()}`,
@@ -107,7 +107,7 @@ export function UserDashboard({ user, brand }: UserDashboardProps) {
       amountUsd: amount,
       status: "PENDING",
       timestamp: new Date().toISOString().replace("T", " ").slice(0, 16),
-      txHash: `0x${Math.random().toString(16).slice(2, 10)}...${Math.random().toString(16).slice(2, 6)}`,
+      txHash: destination || `0x${Math.random().toString(16).slice(2, 10)}...${Math.random().toString(16).slice(2, 6)}`,
     };
     setTransactions((prev) => [newTx, ...prev]);
   };

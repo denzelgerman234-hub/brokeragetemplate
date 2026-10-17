@@ -36,8 +36,151 @@ export function AssetsTreasuryView({ currency: initialCurrency = "USD" }: { curr
 
 function DemoNotice() { return <section className="rounded-2xl border border-emerald-400/25 bg-emerald-400/[0.06] p-6"><p className="text-xs font-semibold uppercase tracking-widest text-emerald-300">Demo account</p><h2 className="mt-1 font-heading text-xl font-bold text-white">Virtual funds stay separate</h2><p className="mt-2 text-sm leading-6 text-brand-secondary">Demo allocations are for practice only. They cannot be funded, withdrawn, or combined with your Live account.</p></section>; }
 function FundingPanel({ onSubmitted }: { onSubmitted: () => void }) { return <section className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]"><div className="rounded-2xl border border-brand-primary/30 bg-brand-primary/[0.04] p-6"><p className="text-xs font-semibold uppercase tracking-widest text-brand-primary">Fund your Live account</p><h2 className="mt-1 font-heading text-xl font-bold text-white">Submit a deposit payment</h2><p className="mt-2 text-sm leading-6 text-brand-secondary">Choose your payment method, then submit your receipt or reference. Your available Live balance changes only after processing is complete.</p><ManualPaymentForm kind="DEPOSIT" onSubmitted={onSubmitted} /></div><aside className="rounded-2xl border border-white/10 bg-brand-surface p-6"><Landmark className="h-5 w-5 text-brand-primary" /><h3 className="mt-3 font-heading text-lg font-bold text-white">Separate account modes</h3><p className="mt-2 text-sm leading-6 text-brand-secondary">Deposits are applied to your Live account after manual processing. Demo funds are isolated and cannot be deposited, withdrawn, or combined with Live capital.</p></aside></section>; }
-function LedgerPanel({ transactions, liveBalance, currency, onRequested }: { transactions: Transaction[]; liveBalance: number; currency: string; onRequested: () => void }) { const [amount, setAmount] = useState(""); const [asset, setAsset] = useState("USD"); const [reference, setReference] = useState(""); const [busy, setBusy] = useState(false); const [message, setMessage] = useState(""); async function request(event: FormEvent) { event.preventDefault(); const value = Number(amount); if (!(value > 0) || value > liveBalance) { setMessage("Enter an amount within your available Live free margin."); return; } setBusy(true); setMessage(""); const response = await fetch("/api/wallet/transactions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "WITHDRAWAL", asset, amount: value, txHash: reference }) }); setBusy(false); if (response.ok) { setAmount(""); setReference(""); setMessage("Withdrawal request recorded. Our team will process it before any funds leave your account."); onRequested(); } else setMessage("We couldn’t record that withdrawal request. Please try again."); }
-return <div className="grid gap-5 xl:grid-cols-[1fr_0.62fr]"><LedgerTable transactions={transactions} currency={currency} /><form onSubmit={request} className="rounded-2xl border border-white/10 bg-brand-surface p-5"><p className="text-xs font-semibold uppercase tracking-widest text-brand-primary">Withdrawal request</p><h2 className="mt-1 font-heading text-lg font-bold text-white">Request Live capital withdrawal</h2><p className="mt-2 text-xs leading-5 text-brand-secondary">Available free margin: {formatCurrency(liveBalance, currency)}.</p><label className="mt-4 block text-xs text-brand-secondary">Asset<select value={asset} onChange={(event) => setAsset(event.target.value)} className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-white"><option>USD</option><option>USDT</option><option>BTC</option></select></label><label className="mt-3 block text-xs text-brand-secondary">Amount<input value={amount} onChange={(event) => setAmount(event.target.value)} min="0.01" step="0.01" type="number" required className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-white" /></label><label className="mt-3 block text-xs text-brand-secondary">Destination reference<input value={reference} onChange={(event) => setReference(event.target.value)} required className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-white" /></label>{message ? <p className="mt-3 text-xs text-brand-primary">{message}</p> : null}<button disabled={busy} className="mt-4 w-full rounded-xl bg-brand-primary px-4 py-3 text-sm font-semibold text-black disabled:opacity-50">{busy ? "Submitting…" : "Request withdrawal"}</button></form></div>; }
+function LedgerPanel({ transactions, liveBalance, currency, onRequested }: { transactions: Transaction[]; liveBalance: number; currency: string; onRequested: () => void }) {
+  const [amount, setAmount] = useState("");
+  const [asset, setAsset] = useState("USD");
+  // Crypto fields
+  const [walletAddress, setWalletAddress] = useState("");
+  const [walletNetwork, setWalletNetwork] = useState("TRC-20");
+  // Bank fields
+  const [bankName, setBankName] = useState("");
+  const [accountHolder, setAccountHolder] = useState("");
+  const [ibanAccount, setIbanAccount] = useState("");
+  const [swiftBic, setSwiftBic] = useState("");
+  const [bankNote, setBankNote] = useState("");
+
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const isCrypto = asset === "BTC" || asset === "USDT";
+
+  async function request(event: FormEvent) {
+    event.preventDefault();
+    const value = Number(amount);
+    if (!(value > 0) || value > liveBalance) {
+      setMessage("Enter an amount within your available Live free margin.");
+      return;
+    }
+
+    // Build a readable destination summary stored in txHash for admin visibility
+    let destination = "";
+    if (isCrypto) {
+      destination = `${asset} · ${walletNetwork} · ${walletAddress}`;
+    } else {
+      const parts = [bankName, accountHolder, ibanAccount, swiftBic, bankNote].filter(Boolean);
+      destination = parts.join(" | ");
+    }
+
+    setBusy(true);
+    setMessage("");
+    const response = await fetch("/api/wallet/transactions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "WITHDRAWAL", asset, amount: value, txHash: destination }),
+    });
+    setBusy(false);
+    if (response.ok) {
+      setAmount(""); setWalletAddress(""); setIbanAccount(""); setSwiftBic(""); setBankName(""); setAccountHolder(""); setBankNote("");
+      setMessage("Withdrawal request recorded. Our team will process it before any funds leave your account.");
+      onRequested();
+    } else {
+      setMessage("We couldn't record that withdrawal request. Please try again.");
+    }
+  }
+
+  return (
+    <div className="grid gap-5 xl:grid-cols-[1fr_0.62fr]">
+      <LedgerTable transactions={transactions} currency={currency} />
+      <form onSubmit={request} className="rounded-2xl border border-white/10 bg-brand-surface p-5">
+        <p className="text-xs font-semibold uppercase tracking-widest text-brand-primary">Withdrawal request</p>
+        <h2 className="mt-1 font-heading text-lg font-bold text-white">Request Live capital withdrawal</h2>
+        <p className="mt-2 text-xs leading-5 text-brand-secondary">Available free margin: {formatCurrency(liveBalance, currency)}.</p>
+
+        {/* Asset + Amount */}
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <label className="text-xs text-brand-secondary">
+            Asset
+            <select value={asset} onChange={(event) => setAsset(event.target.value)} className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-white">
+              <option>USD</option>
+              <option>USDT</option>
+              <option>BTC</option>
+            </select>
+          </label>
+          <label className="text-xs text-brand-secondary">
+            Amount
+            <input value={amount} onChange={(event) => setAmount(event.target.value)} min="0.01" step="0.01" type="number" required
+              className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-white" />
+          </label>
+        </div>
+
+        {/* Destination details */}
+        <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.025] p-4">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-brand-secondary">
+            {isCrypto ? "Sending to (crypto wallet)" : "Sending to (bank account)"}
+          </p>
+
+          {isCrypto ? (
+            <div className="space-y-3">
+              <label className="block text-xs text-brand-secondary">
+                Wallet address <span className="text-rose-400">*</span>
+                <input value={walletAddress} onChange={(e) => setWalletAddress(e.target.value)} required
+                  placeholder={asset === "BTC" ? "bc1q… or 1… or 3…" : "T… (TRC-20) or 0x… (ERC-20)"}
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-white placeholder:text-brand-secondary/50" />
+              </label>
+              {asset === "USDT" && (
+                <label className="block text-xs text-brand-secondary">
+                  Network
+                  <select value={walletNetwork} onChange={(e) => setWalletNetwork(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-white">
+                    <option value="TRC-20">TRC-20 (TRON)</option>
+                    <option value="ERC-20">ERC-20 (Ethereum)</option>
+                    <option value="BEP-20">BEP-20 (BSC)</option>
+                  </select>
+                </label>
+              )}
+              <p className="text-[11px] text-amber-300/80">⚠ Double-check your address and network. Funds sent to the wrong address cannot be recovered.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="text-xs text-brand-secondary">
+                  Bank name <span className="text-rose-400">*</span>
+                  <input value={bankName} onChange={(e) => setBankName(e.target.value)} required placeholder="e.g. Chase, Barclays"
+                    className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-brand-secondary/50" />
+                </label>
+                <label className="text-xs text-brand-secondary">
+                  Account holder name <span className="text-rose-400">*</span>
+                  <input value={accountHolder} onChange={(e) => setAccountHolder(e.target.value)} required placeholder="Full legal name"
+                    className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-brand-secondary/50" />
+                </label>
+              </div>
+              <label className="block text-xs text-brand-secondary">
+                IBAN / Account number <span className="text-rose-400">*</span>
+                <input value={ibanAccount} onChange={(e) => setIbanAccount(e.target.value)} required placeholder="GB29 NWBK 6016 1331 9268 19"
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-white placeholder:text-brand-secondary/50" />
+              </label>
+              <label className="block text-xs text-brand-secondary">
+                SWIFT / BIC code <span className="text-rose-400">*</span>
+                <input value={swiftBic} onChange={(e) => setSwiftBic(e.target.value)} required placeholder="e.g. NWBKGB2L"
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-white placeholder:text-brand-secondary/50" />
+              </label>
+              <label className="block text-xs text-brand-secondary">
+                Additional notes (optional)
+                <input value={bankNote} onChange={(e) => setBankNote(e.target.value)} placeholder="Sort code, routing number, memo…"
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-brand-secondary/50" />
+              </label>
+            </div>
+          )}
+        </div>
+
+        {message && <p className="mt-3 text-xs text-brand-primary">{message}</p>}
+        <button disabled={busy} className="mt-4 w-full rounded-xl bg-brand-primary px-4 py-3 text-sm font-semibold text-black disabled:opacity-50">
+          {busy ? "Submitting…" : "Request withdrawal"}
+        </button>
+      </form>
+    </div>
+  );
+}
 function LedgerTable({ transactions, currency }: { transactions: Transaction[]; currency: string }) { return <section className="rounded-2xl border border-white/10 bg-brand-surface p-5"><h2 className="font-heading text-lg font-bold text-white">Transaction ledger</h2><p className="mt-1 text-xs text-brand-secondary">Activity for the selected account only.</p><div className="mt-5 overflow-x-auto"><table className="w-full min-w-[620px] text-left text-xs"><thead className="border-b border-white/10 text-brand-secondary"><tr><th className="p-3">Event</th><th className="p-3">Amount</th><th className="p-3">Status</th><th className="p-3">Reference</th><th className="p-3 text-right">Time</th></tr></thead><tbody className="divide-y divide-white/5">{transactions.map((item) => <tr key={item.id}><td className="p-3 font-semibold text-white">{item.type.replaceAll("_", " ")}</td><td className={`p-3 font-mono ${item.amount >= 0 ? "text-emerald-400" : "text-rose-400"}`}>{item.amount >= 0 ? "+" : ""}{formatCurrency(item.amountUsd, currency)} <span className="text-brand-secondary">{item.asset}</span></td><td className="p-3"><span className="rounded-full bg-white/10 px-2 py-1 text-[10px]">{item.status}</span></td><td className="p-3 text-brand-secondary">{item.txHash || "—"}</td><td className="p-3 text-right text-brand-secondary">{new Date(item.createdAt).toLocaleString()}</td></tr>)}{!transactions.length && <tr><td colSpan={5} className="p-7 text-center text-brand-secondary">No ledger activity for this account yet.</td></tr>}</tbody></table></div></section>; }
 function BalancesPanel({ account, currency, onRefresh }: { account?: TreasuryAccount; currency: string; onRefresh: () => void }) { return <section className="rounded-2xl border border-white/10 bg-brand-surface p-5"><div className="flex items-center justify-between"><div><h2 className="font-heading text-lg font-bold text-white">{account?.type === "DEMO" ? "Demo" : "Live"} account balance</h2><p className="mt-1 text-xs text-brand-secondary">This balance is isolated from your other account mode.</p></div><button type="button" onClick={onRefresh} className="rounded-lg p-2 text-brand-secondary hover:bg-white/10 hover:text-white" aria-label="Refresh balances"><RefreshCw className="h-4 w-4" /></button></div><div className="mt-5 rounded-2xl border border-white/10 bg-black/10 p-5"><p className="text-xs font-semibold uppercase tracking-widest text-brand-secondary">{account?.type ?? "Account"}</p><p className="mt-3 font-mono text-3xl font-bold text-white">{formatCurrency(account?.balance ?? 0, currency)}</p><div className="mt-5 grid grid-cols-2 gap-3 text-xs sm:grid-cols-4"><Value label="Equity" value={formatCurrency(account?.equity ?? 0, currency)} /><Value label="Used margin" value={formatCurrency(account?.marginUsed ?? 0, currency)} /><Value label="Free margin" value={formatCurrency(account?.freeMargin ?? 0, currency)} /><Value label="Open P&L" value={`${(account?.unrealizedPnl ?? 0) >= 0 ? "+" : ""}${formatCurrency(account?.unrealizedPnl ?? 0, currency)}`} /></div></div></section>; }
 function Value({ label, value }: { label: string; value: string }) { return <div><p className="text-brand-secondary">{label}</p><p className="mt-1 font-mono text-white">{value}</p></div>; }
